@@ -1,0 +1,13 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# dependencies (also ignored per-package)
+node_modules/
+
+# unused large media (kept locally, not pushed)
+Frontend/public/home-video.mp4
