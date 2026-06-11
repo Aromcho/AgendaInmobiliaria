@@ -11,3 +11,4 @@ node_modules/
 
 # unused large media (kept locally, not pushed)
 Frontend/public/home-video.mp4
+Frontend/ecosystem.config.cjs
