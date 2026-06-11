@@ -91,8 +91,37 @@ import * as UI from './ui';
     );
   }
 
+  // ---------- Nueva columna ----------
+  function AddListColumn({ onAddList }) {
+    const [adding, setAdding] = useState(false);
+    const [val, setVal] = useState("");
+
+    function submit() {
+      const v = val.trim();
+      if (v) onAddList(v);
+      setVal(""); setAdding(false);
+    }
+
+    if (!adding) {
+      return e("div", { className: "add-list" },
+        e("button", { className: "add-list-btn", onClick: () => setAdding(true) },
+          e(I.Plus, { width: 15, height: 15 }), "Crear lista"));
+    }
+    return e("div", { className: "add-list" },
+      e("div", { className: "add-list-box" },
+        e("input", { value: val, autoFocus: true, placeholder: "Nombre de la lista…",
+          onChange: (ev) => setVal(ev.target.value),
+          onKeyDown: (ev) => { if (ev.key === "Enter") { ev.preventDefault(); submit(); } if (ev.key === "Escape") { setVal(""); setAdding(false); } } }),
+        e("div", { className: "add-card-actions" },
+          e("button", { className: "btn primary sm", onClick: submit }, "Crear"),
+          e("button", { className: "btn ghost sm", onClick: () => { setVal(""); setAdding(false); } }, "Cancelar"),
+        ),
+      ),
+    );
+  }
+
   // ---------- Tablero ----------
-  function Board({ lists, query, onAddCard, onDelCard, onMoveCard }) {
+  function Board({ lists, query, onAddCard, onDelCard, onMoveCard, onAddList }) {
     const [dragOverId, setDragOverId] = useState(null);
     const drag = useRef(null); // {fromList, cardId}
 
@@ -141,6 +170,7 @@ import * as UI from './ui';
         onDragStart, onDrop, onDragOverList: setDragOverId, dragOverId,
         onAddCard, onDelCard,
       })),
+      e(AddListColumn, { onAddList }),
     );
   }
 

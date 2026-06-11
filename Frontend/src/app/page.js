@@ -98,5 +98,5 @@ export default function Page() {
     );
   }
 
-  return <CalendarApp onLogout={handleLogout} />;
+  return <CalendarApp onLogout={handleLogout} session={session} />;
 }

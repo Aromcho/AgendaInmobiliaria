@@ -29,10 +29,11 @@ export async function login(req, res, next) {
     }
 
     const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '7d' });
+    const isProd = process.env.NODE_ENV === 'production';
     res.cookie('jwt', token, {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
+      sameSite: isProd ? 'none' : 'lax',
+      secure: isProd,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -62,7 +63,8 @@ export async function online(req, res, next) {
 }
 
 export async function logout(_req, res) {
-  res.clearCookie('jwt');
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('jwt', { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd });
   return res.json({ message: 'Logged out' });
 }
 

@@ -156,5 +156,84 @@ import Icons from './Icons';
     );
   }
 
-  export { RecepView, RecepDetail, progress };
+  // ---------- Formulario de nueva propiedad ----------
+  function RecepForm({ nextNum, onClose, onSave }) {
+    const [f, setF] = useState({
+      propiedad: "", owner: "", phone: "", fecha: "", valor: "", link: "",
+      responsable: "", status: "celeste",
+    });
+    const set = (k) => (ev) => setF((o) => ({ ...o, [k]: ev.target.value }));
+
+    function save() {
+      if (!f.propiedad.trim()) return;
+      const team = R.TEAM.find((t) => t.name === f.responsable);
+      onSave({
+        num: nextNum,
+        propiedad: f.propiedad.trim(),
+        owner: f.owner.trim(),
+        phone: f.phone.trim(),
+        fecha: f.fecha.trim(),
+        valor: f.valor.trim(),
+        link: f.link.trim(),
+        responsable: f.responsable,
+        respColor: team ? team.color : "#8a978f",
+        respInit: team ? team.init : "·",
+        status: f.status,
+        flags: [],
+        steps: { tasacion: "missing", autorizacion: "missing", cartel: "missing", fotos: "missing", descripcion: "missing" },
+      });
+    }
+
+    return e("div", { className: "modal-scrim", onMouseDown: onClose },
+      e("div", { className: "form", onMouseDown: (e2) => e2.stopPropagation() },
+        e("div", { className: "form-head" },
+          e("h2", null, "Nueva propiedad"),
+          e("button", { className: "detail-x dark", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
+        ),
+        e("div", { className: "form-body" },
+          e("div", { className: "fg" },
+            e("label", null, "Propiedad"),
+            e("input", { value: f.propiedad, onChange: set("propiedad"), placeholder: "Dirección / descripción de la propiedad", autoFocus: true }),
+          ),
+          e("div", { className: "fg-row" },
+            e("div", { className: "fg" }, e("label", null, "Propietario"),
+              e("input", { value: f.owner, onChange: set("owner"), placeholder: "Nombre del dueño" })),
+            e("div", { className: "fg" }, e("label", null, "Teléfono"),
+              e("input", { value: f.phone, onChange: set("phone"), placeholder: "+54 9 …" })),
+          ),
+          e("div", { className: "fg-row" },
+            e("div", { className: "fg" }, e("label", null, "Valor"),
+              e("input", { value: f.valor, onChange: set("valor"), placeholder: "Usd 100.000" })),
+            e("div", { className: "fg" }, e("label", null, "Fecha de ingreso"),
+              e("input", { value: f.fecha, onChange: set("fecha"), placeholder: "DD/MM" })),
+          ),
+          e("div", { className: "fg-row" },
+            e("div", { className: "fg" },
+              e("label", null, "Responsable"),
+              e("select", { value: f.responsable, onChange: set("responsable") },
+                e("option", { value: "" }, "Sin asignar"),
+                R.TEAM.map((t) => e("option", { key: t.name, value: t.name }, t.name)),
+              ),
+            ),
+            e("div", { className: "fg" },
+              e("label", null, "Estado"),
+              e("select", { value: f.status, onChange: set("status") },
+                Object.values(R.STATUS).map((s) => e("option", { key: s.key, value: s.key }, s.label)),
+              ),
+            ),
+          ),
+          e("div", { className: "fg" },
+            e("label", null, "Link de publicación"),
+            e("input", { value: f.link, onChange: set("link"), placeholder: "https://…" }),
+          ),
+        ),
+        e("div", { className: "form-actions" },
+          e("button", { className: "btn ghost", onClick: onClose }, "Cancelar"),
+          e("button", { className: "btn primary", onClick: save }, e(I.Check, { width: 16, height: 16 }), "Crear propiedad"),
+        ),
+      ),
+    );
+  }
+
+  export { RecepView, RecepDetail, RecepForm, progress };
 

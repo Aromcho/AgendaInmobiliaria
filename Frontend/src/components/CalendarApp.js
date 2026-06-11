@@ -7,6 +7,7 @@ import * as Views from './views';
 import * as Modals from './modals';
 import * as TareasNS from './tareas';
 import * as RecepNS from './recepcion';
+import { UsuariosView } from './usuarios';
 import { createResource, deleteResource, fetchCollection, logout as apiLogout, updateResource } from '@/services/api';
 /* App principal — shell con pestañas (calendario / tareas / recepción / agenda) */
 
@@ -17,11 +18,12 @@ const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar 
 const { MonthView, WeekView, DayView, AgendaView } = Views;
 const { EventDetail, EventForm } = Modals;
 const { Board } = TareasNS;
-const { RecepView, RecepDetail } = RecepNS;
+const { RecepView, RecepDetail, RecepForm } = RecepNS;
 
 function initFilter(keys) { const o = {}; keys.forEach((k) => (o[k] = true)); return o; }
 
-function App({ onLogout }) {
+function App({ onLogout, session }) {
+  const isSuperAdmin = session?.role === 'SUPER_ADMIN';
   const [tab, setTab] = useState("calendario");      // calendario | tareas | recepcion | agenda
   const [view, setView] = useState("month");          // sub-vista del calendario
   const [cursor, setCursor] = useState(C.TODAY);
@@ -37,6 +39,7 @@ function App({ onLogout }) {
   const [recepStatus, setRecepStatus] = useState(() => initFilter(Object.keys(RECEP.STATUS)));
   const [recepResp, setRecepResp] = useState("__all");
   const [recepDetail, setRecepDetail] = useState(null);
+  const [recepForm, setRecepForm] = useState(false);
   const toggleStatus = (k) => setRecepStatus((o) => ({ ...o, [k]: !o[k] }));
 
   const toggleType = (k) => setTypeFilter((o) => ({ ...o, [k]: !o[k] }));
@@ -163,6 +166,19 @@ function App({ onLogout }) {
     setTaskLists(next);
     await Promise.all(updates.map((u) => updateResource('tasks', u.id, { listId: u.listId, position: u.position })));
   };
+  // ---- recepción de propiedades ----
+  const addReception = async (payload) => {
+    const created = await createResource('reception', payload);
+    if (!created) return;
+    setReception((list) => [{ ...created, id: created.id || created._id }, ...list]);
+    setRecepForm(false);
+  };
+
+  const addTaskList = async (title) => {
+    const created = await createResource('tasks/lists', { title });
+    if (!created) return;
+    setTaskLists((lists) => [...lists, { ...created, cards: created.cards || [] }]);
+  };
 
   // ---- toolbar + contenido por pestaña ----
   let toolbar, content;
@@ -178,12 +194,16 @@ function App({ onLogout }) {
     toolbar = e(AgendaToolbar, { cursor, title: agendaTitle, onPrev: onPrevMonth, onNext: onNextMonth, onToday, query, setQuery });
     content = e("div", { className: "view-card agenda-card" }, e(AgendaView, { cursor, events: visible, onOpen: setDetail }));
   } else if (tab === "recepcion") {
-    toolbar = e(RecepcionToolbar, { items: reception, query, setQuery, statusFilter: recepStatus, toggleStatus, respFilter: recepResp, setRespFilter: setRecepResp });
+    toolbar = e(RecepcionToolbar, { items: reception, query, setQuery, statusFilter: recepStatus, toggleStatus, respFilter: recepResp, setRespFilter: setRecepResp, onNew: () => setRecepForm(true) });
     content = e("div", { className: "view-card recep-card" },
       e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail }));
+  } else if (tab === "usuarios") {
+    toolbar = e("div", { className: "toolbar" },
+      e("div", { className: "tb-left" }, e("h1", { className: "tb-title" }, "Usuarios")));
+    content = e(UsuariosView, null);
   } else {
     toolbar = e(TareasToolbar, { query, setQuery });
-    content = e(Board, { lists: taskLists, query, onAddCard: addTaskCard, onDelCard: deleteTaskCard, onMoveCard: moveTaskCard });
+    content = e(Board, { lists: taskLists, query, onAddCard: addTaskCard, onDelCard: deleteTaskCard, onMoveCard: moveTaskCard, onAddList: addTaskList });
   }
 
   return e("div", { className: "app" },
@@ -197,10 +217,15 @@ function App({ onLogout }) {
       ),
       e("div", { className: "shell-main", "data-tab": tab }, content),
     ),
-    e(TabBar, { tab, setTab }),
+    e(TabBar, { tab, setTab, isSuperAdmin }),
     detail ? e(EventDetail, { ev: detail, onClose: () => setDetail(null), onEdit, onDelete }) : null,
     form ? e(EventForm, { initial: form.initial, onClose: () => setForm(null), onSave }) : null,
     recepDetail ? e(RecepDetail, { item: recepDetail, onClose: () => setRecepDetail(null) }) : null,
+    recepForm ? e(RecepForm, {
+      nextNum: reception.reduce((m, it) => Math.max(m, it.num || 0), 0) + 1,
+      onClose: () => setRecepForm(false),
+      onSave: addReception,
+    }) : null,
   );
 }
 

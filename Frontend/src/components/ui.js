@@ -192,6 +192,8 @@ import Icons from './Icons';
       ),
       e("div", { className: "tb-right" },
         e(Search, { query: p.query, setQuery: p.setQuery }),
+        e("button", { className: "new-btn", onClick: p.onNew },
+          e(I.Plus, { width: 17, height: 17 }), "Nueva propiedad"),
         e("div", { className: "status-chips-bar" },
           Object.values(R.STATUS).map((s) => {
             const on = p.statusFilter[s.key];
@@ -217,9 +219,11 @@ import Icons from './Icons';
     { key: "recepcion", label: "Recepción", icon: I.Inbox },
     { key: "agenda", label: "Agenda", icon: I.List },
   ];
-  function TabBar({ tab, setTab }) {
+  const ADMIN_TAB = { key: "usuarios", label: "Usuarios", icon: I.User };
+  function TabBar({ tab, setTab, isSuperAdmin }) {
+    const tabs = isSuperAdmin ? [...TABS, ADMIN_TAB] : TABS;
     return e("nav", { className: "tabbar" },
-      TABS.map((t) => e("button", { key: t.key, className: "tab" + (tab === t.key ? " active" : ""), onClick: () => setTab(t.key) },
+      tabs.map((t) => e("button", { key: t.key, className: "tab" + (tab === t.key ? " active" : ""), onClick: () => setTab(t.key) },
         e(t.icon, { width: 17, height: 17 }), e("span", null, t.label))),
     );
   }

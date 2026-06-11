@@ -9,6 +9,8 @@ const taskSchema = new Schema(
     due: { type: String, default: '' },
     tag: { type: String, default: '' },
     position: { type: Number, default: 0 },
+    createdBy: { type: String, default: '', index: true },
+    createdByName: { type: String, default: '' },
   },
   { timestamps: true }
 );
