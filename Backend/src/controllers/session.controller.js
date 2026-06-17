@@ -2,6 +2,10 @@ import jwt from 'jsonwebtoken';
 import { createHash, verifyHash } from '../utils/hash.util.js';
 import User from '../models/User.model.js';
 
+function isHttps(req) {
+  return req.secure || req.headers['x-forwarded-proto'] === 'https';
+}
+
 function tokenPayload(user) {
   return {
     id: user._id.toString(),
@@ -29,11 +33,11 @@ export async function login(req, res, next) {
     }
 
     const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '24h' });
-    const isProd = process.env.NODE_ENV === 'production';
+    const secure = isHttps(req);
     res.cookie('jwt', token, {
       httpOnly: true,
-      sameSite: isProd ? 'none' : 'lax',
-      secure: isProd,
+      sameSite: secure ? 'none' : 'lax',
+      secure,
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -62,9 +66,9 @@ export async function online(req, res, next) {
   }
 }
 
-export async function logout(_req, res) {
-  const isProd = process.env.NODE_ENV === 'production';
-  res.clearCookie('jwt', { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd });
+export async function logout(req, res) {
+  const secure = isHttps(req);
+  res.clearCookie('jwt', { httpOnly: true, sameSite: secure ? 'none' : 'lax', secure });
   return res.json({ message: 'Logged out' });
 }
 
