@@ -2,67 +2,55 @@
 
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import Acceso from '@/components/Acceso';
-import { INITIAL_SESSION, SUPER_USER } from '@/data/seed';
-import { getSession, login as apiLogin } from '@/services/api';
+import Acceso from '@/components/Acceso/Acceso';
+import { getSession, login as apiLogin, setUnauthorizedHandler } from '@/services/api';
 
-const CalendarApp = dynamic(() => import('@/components/CalendarApp'), { ssr: false });
-
-function initLogin() {
-  return { email: SUPER_USER.email, password: SUPER_USER.password, remember: true };
-}
+const CalendarApp = dynamic(() => import('@/components/CalendarApp/CalendarApp'), { ssr: false });
 
 export default function Page() {
-  const [session, setSession] = useState(INITIAL_SESSION);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [bootError, setBootError] = useState('');
-  const [loginForm, setLoginForm] = useState(initLogin);
+  const [backendDown, setBackendDown] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '', remember: false });
   const [authError, setAuthError] = useState('');
 
+  // Registrar handler global: si cualquier request recibe 401, fuerza logout
+  useEffect(() => {
+    setUnauthorizedHandler(() => setSession(null));
+  }, []);
+
+  // Verificar sesión existente al arrancar
   useEffect(() => {
     let active = true;
-
-    async function boot() {
-      const online = await getSession();
+    getSession().then((result) => {
       if (!active) return;
-      if (online?.online) setSession(online.user || online);
+      if (result?.online) setSession(result.user || result);
       setLoading(false);
-    }
-
-    boot().catch(() => {
+    }).catch(() => {
       if (!active) return;
-      setBootError('El backend todavía no responde. La interfaz seguirá con los datos semilla.');
+      setBackendDown(true);
       setLoading(false);
     });
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   async function handleLogin(event) {
     event.preventDefault();
     setAuthError('');
 
-    const remote = await apiLogin(loginForm.email, loginForm.password).catch(() => null);
-    const online = await getSession().catch(() => null);
+    const result = await apiLogin(loginForm.email, loginForm.password);
+    if (!result) {
+      setAuthError('No se pudo conectar con el servidor. Verificá tu conexión.');
+      return;
+    }
 
+    const online = await getSession();
     if (online?.online) {
       setSession(online.user || online);
       return;
     }
 
-    if (remote?.online || remote?.token) {
-      setSession(remote.user || { email: loginForm.email, role: 'USER', name: loginForm.email });
-      return;
-    }
-
-    if (loginForm.email === SUPER_USER.email && loginForm.password === SUPER_USER.password) {
-      setSession({ online: true, user: { email: SUPER_USER.email, name: SUPER_USER.name, role: SUPER_USER.role } });
-      return;
-    }
-
-    setAuthError('No se pudo iniciar sesión. Verificá el backend o las credenciales.');
+    setAuthError('Credenciales incorrectas.');
   }
 
   function handleLogout() {
@@ -93,7 +81,7 @@ export default function Page() {
         setLoginForm={setLoginForm}
         onSubmit={handleLogin}
         authError={authError}
-        bootError={bootError}
+        bootError={backendDown ? 'El servidor no responde. Verificá que el backend esté corriendo.' : ''}
       />
     );
   }

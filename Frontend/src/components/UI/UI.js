@@ -2,7 +2,8 @@
 import React from 'react';
 import { CAL } from '@/lib/data';
 import { RECEP } from '@/lib/recepcionData';
-import Icons from './Icons';
+import Icons from '../Icons/Icons';
+import './UI.css';
 /* Componentes compartidos -> window.UI
    Avatar, TypeDot, StatusBadge, MiniCalendar, FiltersPopover,
    CalendarToolbar, AgendaToolbar, TareasToolbar, TabBar */
@@ -117,6 +118,41 @@ import Icons from './Icons';
     { key: "day", label: "Día", icon: I.Layout },
   ];
 
+  const RANGE_VIEWS = [
+    { key: "quarter", label: "3 meses" },
+    { key: "half", label: "6 meses" },
+    { key: "year", label: "12 meses" },
+  ];
+
+  // ---------- Selector de rango (3/6/12 meses) ----------
+  function RangeMenu({ view, setView }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    const active = RANGE_VIEWS.find((v) => v.key === view);
+
+    useEffect(() => {
+      if (!open) return;
+      const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) setOpen(false); };
+      document.addEventListener("mousedown", h);
+      return () => document.removeEventListener("mousedown", h);
+    }, [open]);
+
+    return e("div", { className: "range-wrap", ref },
+      e("button", { className: "range-btn" + (active ? " active" : ""), onClick: () => setOpen((o) => !o) },
+        e(I.Calendar, { width: 15, height: 15 }),
+        e("span", null, active ? active.label : "Más vistas"),
+        e(I.ChevronDown, { width: 14, height: 14 }),
+      ),
+      open ? e("div", { className: "range-pop" },
+        RANGE_VIEWS.map((v) => e("button", {
+          key: v.key,
+          className: "range-opt" + (view === v.key ? " on" : ""),
+          onClick: () => { setView(v.key); setOpen(false); },
+        }, v.label)),
+      ) : null,
+    );
+  }
+
   // ---------- Toolbar Calendario ----------
   function CalendarToolbar(p) {
     const [openF, setOpenF] = useState(false);
@@ -136,6 +172,7 @@ import Icons from './Icons';
           CAL_VIEWS.map((v) => e("button", { key: v.key, className: "vs-btn" + (p.view === v.key ? " active" : ""), onClick: () => p.setView(v.key) },
             e(v.icon, { width: 15, height: 15 }), e("span", null, v.label))),
         ),
+        e(RangeMenu, { view: p.view, setView: p.setView }),
         e("div", { className: "filter-wrap" },
           e("button", { className: "icon-btn" + (anyOff ? " on" : ""), onClick: () => setOpenF((o) => !o), title: "Filtros" },
             e(I.Filter, { width: 17, height: 17 }), anyOff ? e("span", { className: "icon-dot" }) : null),
@@ -168,12 +205,20 @@ import Icons from './Icons';
 
   // ---------- Toolbar Tareas ----------
   function TareasToolbar(p) {
+    const teamUsers = p.teamUsers || [];
     return e("div", { className: "toolbar" },
       e("div", { className: "tb-left" },
         e("h1", { className: "tb-title" }, "Tareas del equipo"),
         e("span", { className: "tb-sub" }, "Organizá el trabajo por estado"),
       ),
       e("div", { className: "tb-right" },
+        p.canManageTasks ? e("div", { className: "owner-switch" },
+          e("button", { className: "owner-chip" + (!p.taskOwner ? " on" : ""), onClick: () => p.setTaskOwner(null) }, "Mis tareas"),
+          teamUsers.map((u) => e("button", {
+            key: u._id, className: "owner-chip" + (p.taskOwner === u._id ? " on" : ""),
+            onClick: () => p.setTaskOwner(u._id),
+          }, u.name)),
+        ) : null,
         e(Search, { query: p.query, setQuery: p.setQuery }),
       ),
     );

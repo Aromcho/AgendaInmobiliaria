@@ -1,8 +1,9 @@
 'use client';
 import React from 'react';
 import { CAL } from '@/lib/data';
-import Icons from './Icons';
-import * as UI from './ui';
+import Icons from '../Icons/Icons';
+import * as UI from '../UI/UI';
+import './Views.css';
 /* Vistas del calendario -> window.Views
    MonthView, WeekView, DayView, AgendaView + algoritmos de layout */
 
@@ -84,17 +85,19 @@ import * as UI from './ui';
     return out;
   }
 
-  // ============ Vista MES ============
-  function MonthView({ cursor, events, onOpen, onNew, goDay }) {
+  // ============ Vista MES (y grilla compacta para multi-mes) ============
+  function MonthGrid({ cursor, events, onOpen, onNew, goDay, compact }) {
     const first = C.startOfMonth(cursor);
     const gridStart = C.startOfWeek(first);
     const weeks = [];
     for (let w = 0; w < 6; w++) weeks.push(C.addDays(gridStart, w * 7));
-    const MAX = 3;
+    const MAX = compact ? 1 : 3;
+    const HEAD_H = compact ? 16 : 30;
+    const LANE_H = compact ? 15 : 23;
 
-    return e("div", { className: "month" },
+    return e("div", { className: "month" + (compact ? " mini" : "") },
       e("div", { className: "month-dow" },
-        C.DAYS_SHORT.map((d) => e("div", { key: d, className: "mdow" }, d)),
+        C.DAYS_SHORT.map((d) => e("div", { key: d, className: "mdow" }, compact ? d[0] : d)),
       ),
       e("div", { className: "month-grid" },
         weeks.map((ws, wi) => {
@@ -125,7 +128,6 @@ import * as UI from './ui';
             e("div", { className: "mweek-bars" },
               segs.filter((s) => s.lane < MAX).map((s, i) => {
                 const t = C.EVENT_TYPES[s.ev.type];
-                const Ico = TYPE_ICON[s.ev.type];
                 const ag = C.agentById(s.ev.agentId);
                 const multi = s.ev.allDay && C.dayDiff(s.ev.start, s.ev.end) >= 1;
                 return e("button", {
@@ -134,7 +136,7 @@ import * as UI from './ui';
                   style: {
                     left: `calc(${(s.startCol / 7) * 100}% + 4px)`,
                     width: `calc(${(s.span / 7) * 100}% - 8px)`,
-                    top: 30 + s.lane * 23,
+                    top: HEAD_H + s.lane * LANE_H,
                     background: multi ? t.color : t.bg,
                     color: multi ? "#fff" : t.ink,
                     borderColor: multi ? t.color : t.soft,
@@ -142,24 +144,44 @@ import * as UI from './ui';
                   onClick: (ev) => { ev.stopPropagation(); onOpen(s.ev); },
                   title: s.ev.title,
                 },
-                  multi
-                    ? e("span", { className: "mbar-in" }, s.ev.title, ag ? e("span", { className: "mbar-tag" }, ag.initials) : null)
-                    : e("span", { className: "mbar-in" },
-                        e(TypeDot, { type: s.ev.type, size: 7 }),
-                        !s.ev.allDay ? e("b", { className: "mbar-time" }, C.fmtTime(s.ev.start)) : null,
-                        e("span", { className: "mbar-txt" }, s.ev.title)),
+                  compact
+                    ? e("span", { className: "mbar-in" }, s.ev.title)
+                    : multi
+                      ? e("span", { className: "mbar-in" }, s.ev.title, ag ? e("span", { className: "mbar-tag" }, ag.initials) : null)
+                      : e("span", { className: "mbar-in" },
+                          e(TypeDot, { type: s.ev.type, size: 7 }),
+                          !s.ev.allDay ? e("b", { className: "mbar-time" }, C.fmtTime(s.ev.start)) : null,
+                          e("span", { className: "mbar-txt" }, s.ev.title)),
                 );
               }),
               // overflow
               [0,1,2,3,4,5,6].map((ci) => hidden[ci] ? e("button", {
                 key: "ov" + ci,
                 className: "mbar-more",
-                style: { left: `calc(${(ci / 7) * 100}% + 4px)`, width: `calc(${(1 / 7) * 100}% - 8px)`, top: 30 + MAX * 23 },
+                style: { left: `calc(${(ci / 7) * 100}% + 4px)`, width: `calc(${(1 / 7) * 100}% - 8px)`, top: HEAD_H + MAX * LANE_H },
                 onClick: (ev) => { ev.stopPropagation(); goDay(C.addDays(ws, ci)); },
-              }, `+${hidden[ci]} más`) : null),
+              }, compact ? `+${hidden[ci]}` : `+${hidden[ci]} más`) : null),
             ),
           );
         }),
+      ),
+    );
+  }
+
+  function MonthView(p) { return MonthGrid(Object.assign({}, p, { compact: false })); }
+
+  // ============ Vista MULTI-MES (3 / 6 / 12 meses) ============
+  function MultiMonthView({ months, cursor, events, onOpen, onNew, goDay }) {
+    const first = C.startOfMonth(cursor);
+    const cursors = [];
+    for (let m = 0; m < months; m++) cursors.push(C.addMonths(first, m));
+
+    return e("div", { className: "multi-month", "data-count": months },
+      e("div", { className: "mm-grid" },
+        cursors.map((mc, i) => e("div", { className: "mm-month", key: i },
+          e("div", { className: "mm-month-head" }, C.fmtMonthYear(mc).replace(/^./, (c) => c.toUpperCase())),
+          e(MonthGrid, { cursor: mc, events, onOpen, onNew, goDay, compact: true }),
+        )),
       ),
     );
   }
@@ -368,5 +390,5 @@ import * as UI from './ui';
     );
   }
 
-  export { MonthView, WeekView, DayView, AgendaView };
+  export { MonthView, MultiMonthView, WeekView, DayView, AgendaView };
 

@@ -11,7 +11,11 @@ export async function getEvents(_req, res, next) {
 
 export async function createEvent(req, res, next) {
   try {
-    const event = await Event.create(req.body);
+    const event = await Event.create({
+      ...req.body,
+      createdBy: req.user?.id || req.user?.email || '',
+      createdByName: req.user?.name || '',
+    });
     return res.status(201).json(event);
   } catch (error) {
     return next(error);

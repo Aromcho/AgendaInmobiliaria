@@ -28,13 +28,13 @@ export async function login(req, res, next) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '7d' });
+    const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '24h' });
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie('jwt', token, {
       httpOnly: true,
       sameSite: isProd ? 'none' : 'lax',
       secure: isProd,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.json({ online: true, token, user: tokenPayload(user) });

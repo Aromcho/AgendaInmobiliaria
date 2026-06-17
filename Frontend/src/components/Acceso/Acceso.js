@@ -1,6 +1,7 @@
 'use client';
 
 import { CAL } from '@/lib/data';
+import './Acceso.css';
 
 export default function Acceso({ loginForm, setLoginForm, onSubmit, authError, bootError }) {
   const set = (key) => (ev) => {

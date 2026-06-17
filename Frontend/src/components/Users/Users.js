@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
-import Icons from './Icons';
-import { createResource, deleteResource, fetchCollection } from '@/services/api';
+import Icons from '../Icons/Icons';
+import './Users.css';
+import { createResource, deleteResource, fetchCollection, updateResource } from '@/services/api';
 /* Dashboard simple de gestión de usuarios -> solo SUPER_ADMIN */
 
 const e = React.createElement;
@@ -36,6 +37,12 @@ function UsuariosView() {
     load();
   }
 
+  async function changeRole(id, role) {
+    const updated = await updateResource('users', id, { role });
+    if (!updated) return;
+    setUsers((list) => list.map((u) => (u._id === id ? { ...u, role } : u)));
+  }
+
   return e('div', { className: 'view-card users-card' },
     e('h2', { className: 'tb-title', style: { marginBottom: 14 } }, 'Gestión de usuarios'),
     e('form', { className: 'users-form', onSubmit: submit },
@@ -44,6 +51,7 @@ function UsuariosView() {
       e('input', { value: form.password, onChange: set('password'), placeholder: 'Contraseña', type: 'password' }),
       e('select', { value: form.role, onChange: set('role') },
         e('option', { value: 'USER' }, 'Usuario'),
+        e('option', { value: 'ADMIN' }, 'Admin'),
         e('option', { value: 'SUPER_ADMIN' }, 'Super admin'),
       ),
       e('button', { className: 'btn primary', type: 'submit' }, e(I.Plus, { width: 16, height: 16 }), 'Crear usuario'),
@@ -54,7 +62,11 @@ function UsuariosView() {
         e('div', null,
           e('b', null, u.name), ' ',
           e('span', { className: 'd-muted' }, u.email)),
-        e('span', { className: 'status-badge', style: { color: '#1f2a24', background: '#e8ebe9' } }, u.role),
+        e('select', { className: 'role-select', value: u.role, onChange: (ev) => changeRole(u._id, ev.target.value) },
+          e('option', { value: 'USER' }, 'Usuario'),
+          e('option', { value: 'ADMIN' }, 'Admin'),
+          e('option', { value: 'SUPER_ADMIN' }, 'Super admin'),
+        ),
         e('button', { className: 'btn ghost danger sm', onClick: () => remove(u._id) }, e(I.Trash, { width: 14, height: 14 }), 'Eliminar'),
       )),
     ),

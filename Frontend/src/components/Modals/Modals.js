@@ -1,8 +1,9 @@
 'use client';
 import React from 'react';
 import { CAL } from '@/lib/data';
-import Icons from './Icons';
-import * as UI from './ui';
+import Icons from '../Icons/Icons';
+import * as UI from '../UI/UI';
+import './Modals.css';
 /* Modales -> window.Modals : EventDetail, EventForm */
 
   const e = React.createElement;

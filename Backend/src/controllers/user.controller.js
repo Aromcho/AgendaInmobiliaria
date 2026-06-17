@@ -3,7 +3,19 @@ import { createHash } from '../utils/hash.util.js';
 
 export async function getUsers(_req, res, next) {
   try {
-    const users = await User.find().sort({ createdAt: -1 }).lean();
+    const users = await User.find().select('-password').sort({ createdAt: -1 }).lean();
+    return res.json(users);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function getTeamUsers(req, res, next) {
+  try {
+    const users = await User.find({ active: true, _id: { $ne: req.user?.id } })
+      .select('name email role')
+      .sort({ name: 1 })
+      .lean();
     return res.json(users);
   } catch (error) {
     return next(error);

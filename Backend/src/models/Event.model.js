@@ -16,6 +16,9 @@ const eventSchema = new Schema(
       people: Number,
     },
     notes: { type: String, default: '' },
+    createdBy: { type: String, default: '', index: true },
+    createdByName: { type: String, default: '' },
+    reminderSentAt: { type: Date, default: null },
   },
   { timestamps: true }
 );
