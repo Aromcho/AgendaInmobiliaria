@@ -81,7 +81,7 @@ import './Tareas.css';
       document.addEventListener("mousedown", h);
       return () => document.removeEventListener("mousedown", h);
     }, [onClose]);
-    return e("div", { className: "color-pop", ref, onMouseDown: (ev) => ev.stopPropagation() },
+    return e("div", { className: "color-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
       TASK_COLORS.map((c) => e("button", {
         key: c, type: "button", title: "Elegir este color",
         className: "color-swatch" + (value === c ? " on" : ""),
@@ -109,7 +109,7 @@ import './Tareas.css';
       document.addEventListener("mousedown", h);
       return () => document.removeEventListener("mousedown", h);
     }, [onClose]);
-    return e("div", { className: "emoji-pop", ref, onMouseDown: (ev) => ev.stopPropagation() },
+    return e("div", { className: "emoji-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
       TASK_EMOJIS.map((em) => e("button", {
         key: em, type: "button",
         className: "emoji-swatch" + (value === em ? " on" : ""),
@@ -225,6 +225,7 @@ import './Tareas.css';
       },
       onDragStart: (ev) => onDragStart(ev, listId, card.id),
       onAnimationEnd: anim && anim !== "done" ? () => onAnimEnd(card.id) : undefined,
+      onClick: () => onEditCard(listId, card),
     },
       card.image ? e("div", { className: "tc-photo-wrap" },
         e("img", { className: "tc-photo", src: card.image, alt: "" }),
@@ -247,7 +248,7 @@ import './Tareas.css';
           fmtDue(card.due)) : e("span", null),
         ag ? e(Avatar, { agent: ag, size: 24 }) : null,
       ),
-      e("div", { className: "tc-actions" },
+      e("div", { className: "tc-actions", onClick: (ev) => ev.stopPropagation() },
         e("button", { className: "tc-act", title: "Emoji de la tarjeta", onClick: () => setOpenPicker((o) => (o === "emoji" ? null : "emoji")) },
           card.emoji ? e("span", { className: "tc-emoji-mini" }, card.emoji) : e(I.Plus, { width: 12, height: 12 })),
         e("button", { className: "tc-act", title: "Color de la tarjeta", onClick: () => setOpenPicker((o) => (o === "color" ? null : "color")) },
