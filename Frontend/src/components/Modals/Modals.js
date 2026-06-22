@@ -7,21 +7,12 @@ import './Modals.css';
 /* Modales -> window.Modals : EventDetail, EventForm */
 
   const e = React.createElement;
-  const { useState } = React;
+  const { useState, useRef } = React;
   const C = CAL;
   const I = Icons;
-  const { Avatar, TYPE_ICON } = UI;
+  const { Avatar, TYPE_ICON, InfoChip, InfoCard, Confetti } = UI;
 
-  function Row({ icon, label, children }) {
-    if (!children) return null;
-    return e("div", { className: "d-row" },
-      e("span", { className: "d-ico" }, icon),
-      e("div", { className: "d-rc" },
-        label ? e("div", { className: "d-label" }, label) : null,
-        e("div", { className: "d-val" }, children),
-      ),
-    );
-  }
+  const STATUS_EMOJI = { confirmada: "✅", senia: "💰", pendiente: "⏳", cancelada: "🚫" };
 
   // ---------- Detalle de evento ----------
   function EventDetail({ ev, onClose, onEdit, onDelete }) {
@@ -31,34 +22,43 @@ import './Modals.css';
     const ag = C.agentById(ev.agentId);
     const prop = C.propById(ev.propertyId);
     const st = C.STATUS[ev.status];
-    const multi = ev.allDay && C.dayDiff(ev.start, ev.end) >= 1;
-    const dateLine = ev.allDay
-      ? (multi
-          ? `${C.parse(ev.start).getDate()} ${C.MONTHS_SHORT[C.parse(ev.start).getMonth()]} → ${C.parse(ev.end).getDate()} ${C.MONTHS_SHORT[C.parse(ev.end).getMonth()]} · ${C.nights(ev)} noches`
-          : `${C.DAYS[(C.parse(ev.start).getDay()+6)%7]} ${C.parse(ev.start).getDate()} de ${C.MONTHS[C.parse(ev.start).getMonth()]}`)
-      : `${C.DAYS[(C.parse(ev.start).getDay()+6)%7]} ${C.parse(ev.start).getDate()} · ${C.fmtTime(ev.start)} – ${C.fmtTime(ev.end)}`;
+    const dateLine = C.eventDateLine(ev);
 
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
       e("div", { className: "detail", onMouseDown: (e2) => e2.stopPropagation() },
-        e("div", { className: "detail-top", style: { background: t.color } },
-          e("span", { className: "detail-type" }, e(Ico, { width: 15, height: 15 }), t.label),
+        e("div", { className: "detail-top", style: { background: `linear-gradient(135deg, ${t.color}, ${t.ink})` } },
+          e("span", { className: "detail-deco" }),
+          e("span", { className: "detail-type" }, e(Ico, { width: 14, height: 14 }), t.label),
           e("button", { className: "detail-x", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
         ),
         e("div", { className: "detail-body" },
           e("h2", { className: "detail-title" }, ev.title),
-          st ? e("span", { className: "status-badge lg", style: { color: st.color, background: st.bg } }, st.label) : null,
-          e("div", { className: "detail-rows" },
-            e(Row, { icon: e(I.Clock, { width: 16, height: 16 }) }, dateLine),
-            prop ? e(Row, { icon: e(I.MapPin, { width: 16, height: 16 }), label: prop.kind },
-              e("div", null, e("b", null, prop.name), e("div", { className: "d-muted" }, prop.loc))) : null,
-            ev.client ? e(Row, { icon: e(I.User, { width: 16, height: 16 }), label: "Cliente" },
-              e("div", null, e("b", null, ev.client.name),
-                ev.client.people ? e("span", { className: "d-chip" }, `${ev.client.people} pax`) : null,
-                ev.client.phone ? e("div", { className: "d-muted d-phone" }, e(I.Phone, { width: 13, height: 13 }), ev.client.phone) : null,
-              )) : null,
-            ag ? e(Row, { icon: e(Avatar, { agent: ag, size: 24 }), label: "Responsable" }, ag.name) : null,
-            ev.notes ? e(Row, { icon: e(I.Tag, { width: 16, height: 16 }), label: "Notas" }, ev.notes) : null,
+          e("div", { className: "detail-grid" },
+            e(InfoChip, {
+              icon: ag ? e(Avatar, { agent: ag, size: 30 }) : e(I.User, { width: 15, height: 15 }),
+              emoji: "👋", label: "Responsable", value: ag ? ag.name : "Sin asignar",
+            }),
+            e(InfoChip, {
+              icon: e(I.Clock, { width: 15, height: 15 }), emoji: "📅",
+              label: ev.allDay ? "Fechas" : "Horario", value: dateLine,
+            }),
+            st ? e(InfoChip, {
+              icon: e(I.Check, { width: 15, height: 15 }), emoji: STATUS_EMOJI[ev.status] || "📌",
+              label: "Estado", value: st.label, tint: { color: st.color, bg: st.bg },
+            }) : null,
           ),
+          prop ? e(InfoCard, {
+            icon: e(I.MapPin, { width: 15, height: 15 }), emoji: "🏠", label: prop.kind,
+            title: prop.name, sub: prop.loc,
+          }) : null,
+          ev.client ? e(InfoCard, {
+            icon: e(I.User, { width: 15, height: 15 }), emoji: "🙋", label: "Cliente",
+            title: e("span", null, ev.client.name, ev.client.people ? e("span", { className: "d-chip" }, `${ev.client.people} pax`) : null),
+            sub: ev.client.phone ? e("span", { className: "d-phone" }, e(I.Phone, { width: 13, height: 13 }), ev.client.phone) : null,
+          }) : null,
+          ev.notes ? e(InfoCard, {
+            icon: e(I.Tag, { width: 15, height: 15 }), emoji: "📝", label: "Notas", sub: ev.notes,
+          }) : null,
         ),
         e("div", { className: "detail-actions" },
           e("button", { className: "btn ghost danger", onClick: () => onDelete(ev) }, e(I.Trash, { width: 16, height: 16 }), "Eliminar"),
@@ -73,6 +73,117 @@ import './Modals.css';
   // ---------- Formulario ----------
   function pad(n) { return String(n).padStart(2, "0"); }
   function toDateInput(dt) { const x = C.parse(dt); return `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`; }
+  function fmtDateTime(dt, allDay) {
+    const x = C.parse(dt);
+    const base = `${x.getFullYear()}-${pad(x.getMonth()+1)}-${pad(x.getDate())}`;
+    return allDay ? `${base}T00:00:00` : `${base}T${pad(x.getHours())}:${pad(x.getMinutes())}:00`;
+  }
+
+  // ---------- Modal de agenda vencida (decidir: posponer o marcar hecho) ----------
+  function quickPostponeOptions(ev) {
+    const now = new Date();
+    const orig = C.parse(ev.start);
+    const withTime = (base) => { const d = new Date(base); if (!ev.allDay) d.setHours(orig.getHours(), orig.getMinutes(), 0, 0); return d; };
+    if (ev.allDay) {
+      return [
+        { label: "Mañana", date: C.addDays(now, 1) },
+        { label: "En 3 días", date: C.addDays(now, 3) },
+        { label: "La próxima semana", date: C.addDays(now, 7) },
+      ];
+    }
+    return [
+      { label: "En 1 hora", date: new Date(now.getTime() + 60 * 60000) },
+      { label: "Mañana", date: withTime(C.addDays(now, 1)) },
+      { label: "La próxima semana", date: withTime(C.addDays(now, 7)) },
+    ];
+  }
+
+  function OverdueModal({ ev, queuePos, queueLen, onClose, onDone, onPostpone }) {
+    if (!ev) return null;
+    const t = C.EVENT_TYPES[ev.type];
+    const Ico = TYPE_ICON[ev.type];
+    const s0 = C.parse(ev.start), e0 = C.parse(ev.end);
+    const durationMs = Math.max(0, e0 - s0);
+    const [mode, setMode] = useState("choose"); // choose | postpone | celebrate
+    const [date, setDate] = useState(() => toDateInput(C.addDays(new Date(), 1)));
+    const [time, setTime] = useState(`${pad(s0.getHours())}:${pad(s0.getMinutes())}`);
+    const doneRef = useRef(null);
+    const [confettiPos, setConfettiPos] = useState(null);
+
+    function applyPostpone(newStart) {
+      const newEnd = new Date(newStart.getTime() + durationMs);
+      onPostpone(ev, fmtDateTime(newStart, ev.allDay), fmtDateTime(newEnd, ev.allDay));
+    }
+    function confirmManual() {
+      const newStart = ev.allDay ? C.parse(date + "T00:00:00") : C.parse(`${date}T${time}:00`);
+      applyPostpone(newStart);
+    }
+    function celebrate() {
+      if (doneRef.current) {
+        const r = doneRef.current.getBoundingClientRect();
+        setConfettiPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      }
+      setMode("celebrate");
+      setTimeout(() => onDone(ev), 1200);
+    }
+
+    return e("div", { className: "modal-scrim", onMouseDown: mode === "celebrate" ? undefined : onClose },
+      e("div", { className: "detail overdue-modal", onMouseDown: (e2) => e2.stopPropagation() },
+        e("div", { className: "detail-top", style: { background: `linear-gradient(135deg, ${t.color}, ${t.ink})` } },
+          e("span", { className: "detail-deco" }),
+          e("span", { className: "detail-type" }, "⏰ Quedó pendiente"),
+          mode !== "celebrate" ? e("button", { className: "detail-x", onClick: onClose }, e(I.Close, { width: 18, height: 18 })) : null,
+        ),
+        e("div", { className: "detail-body" },
+          mode === "celebrate"
+            ? e("div", { className: "overdue-celebrate" },
+                e("span", { className: "overdue-celebrate-ico" }, "🎉"),
+                e("p", null, "¡Listo! Quedó marcada como hecha."),
+              )
+            : e(React.Fragment, null,
+                queueLen > 1 ? e("div", { className: "overdue-counter" }, `Agenda ${queuePos} de ${queueLen} que quedaron pendientes`) : null,
+                e("h2", { className: "detail-title" }, ev.title),
+                e("div", { className: "detail-chip full" },
+                  e("span", { className: "dc-ico", style: { color: t.color, background: t.bg } }, e(Ico, { width: 15, height: 15 })),
+                  e("div", { className: "dc-text" },
+                    e("div", { className: "dc-label" }, t.label),
+                    e("div", { className: "dc-val" }, C.eventDateLine(ev)),
+                  ),
+                  e("span", { className: "dc-emoji" }, "⏰"),
+                ),
+                mode === "choose"
+                  ? e(React.Fragment, null,
+                      e("p", { className: "overdue-question" }, "Ya pasó la fecha. ¿Qué hacemos con esta agenda?"),
+                      e("div", { className: "overdue-choices" },
+                        e("button", { className: "overdue-choice postpone", onClick: () => setMode("postpone") },
+                          e("span", { className: "oc-emoji" }, "📅"), e("span", null, "Posponer")),
+                        e("button", { className: "overdue-choice done", ref: doneRef, onClick: celebrate },
+                          e("span", { className: "oc-emoji" }, "✅"), e("span", null, "Hecho")),
+                      ),
+                    )
+                  : e(React.Fragment, null,
+                      e("div", { className: "overdue-quick" },
+                        quickPostponeOptions(ev).map((q, i) => e("button", {
+                          key: i, type: "button", className: "overdue-quick-btn", onClick: () => applyPostpone(q.date),
+                        }, q.label)),
+                      ),
+                      e("div", { className: "fg-row" },
+                        e("div", { className: "fg" }, e("label", null, "Nueva fecha"),
+                          e("input", { type: "date", value: date, onChange: (ev2) => setDate(ev2.target.value) })),
+                        !ev.allDay ? e("div", { className: "fg sm" }, e("label", null, "Hora"),
+                          e("input", { type: "time", value: time, onChange: (ev2) => setTime(ev2.target.value) })) : null,
+                      ),
+                      e("div", { className: "overdue-postpone-actions" },
+                        e("button", { className: "btn ghost", onClick: () => setMode("choose") }, "Volver"),
+                        e("button", { className: "btn primary", onClick: confirmManual }, e(I.Check, { width: 16, height: 16 }), "Confirmar"),
+                      ),
+                    ),
+              ),
+        ),
+      ),
+      confettiPos ? e(Confetti, { x: confettiPos.x, y: confettiPos.y, onDone: () => {} }) : null,
+    );
+  }
 
   function EventForm({ initial, onClose, onSave }) {
     const isEdit = !!initial.id;
@@ -119,8 +230,9 @@ import './Modals.css';
       onSave(ev);
     }
 
+    const curType = C.EVENT_TYPES[f.type];
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
-      e("div", { className: "form", onMouseDown: (e2) => e2.stopPropagation() },
+      e("div", { className: "form", style: { "--form-accent": curType.color }, onMouseDown: (e2) => e2.stopPropagation() },
         e("div", { className: "form-head" },
           e("h2", null, isEdit ? "Editar evento" : "Nuevo evento"),
           e("button", { className: "detail-x dark", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
@@ -134,7 +246,7 @@ import './Modals.css';
                 const on = f.type === t.key;
                 return e("button", { key: t.key, type: "button",
                   className: "type-chip" + (on ? " on" : ""),
-                  style: on ? { background: t.bg, color: t.ink, borderColor: t.color } : null,
+                  style: on ? { background: t.bg, color: t.ink, borderColor: t.color, boxShadow: `0 4px 14px -4px ${t.color}` } : null,
                   onClick: () => setF((o) => ({ ...o, type: t.key })) },
                   e("span", { className: "tc-ico", style: { color: t.color } }, e(Ico, { width: 14, height: 14 })), t.short);
               }),
@@ -187,7 +299,7 @@ import './Modals.css';
             e("div", { className: "status-chips" },
               Object.values(C.STATUS).map((s) => e("button", { key: s.key, type: "button",
                 className: "status-chip" + (f.status === s.key ? " on" : ""),
-                style: f.status === s.key ? { color: s.color, background: s.bg, borderColor: s.color } : null,
+                style: f.status === s.key ? { color: s.color, background: s.bg, borderColor: s.color, boxShadow: `0 4px 14px -4px ${s.color}` } : null,
                 onClick: () => setF((o) => ({ ...o, status: s.key })) }, s.label)),
             ),
           ),
@@ -204,5 +316,5 @@ import './Modals.css';
     );
   }
 
-  export { EventDetail, EventForm };
+  export { EventDetail, EventForm, OverdueModal };
 

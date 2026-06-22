@@ -24,6 +24,9 @@ async function buildTaskFields(body) {
     type: body.type || 'tarea',
     due: body.due || '',
     tag: body.tag || '',
+    color: body.color || '',
+    emoji: body.emoji || '',
+    image: body.image || '',
   };
   const url = extractFirstUrl(fields.description);
   fields.linkPreview = url ? await fetchLinkPreview(url).catch(() => null) : null;
@@ -98,14 +101,17 @@ export async function createTask(req, res, next) {
       }
     }
 
+    const assignedByOther = manager && ownerId !== selfId(req.user);
     const fields = await buildTaskFields(req.body);
     const position = await Task.countDocuments({ listId: fields.listId });
     const task = await Task.create({
       ...fields,
       position,
-      agentId: req.body.agentId || 'a1',
+      agentId: req.body.agentId || '',
       createdBy: ownerId,
       createdByName: ownerName,
+      assignedBy: assignedByOther ? selfId(req.user) : '',
+      assignedByName: assignedByOther ? (req.user?.name || '') : '',
     });
 
     if (manager && ownerId !== selfId(req.user)) {
@@ -144,6 +150,9 @@ export async function updateTask(req, res, next) {
         type: existing.type,
         due: existing.due,
         tag: existing.tag,
+        color: existing.color,
+        emoji: existing.emoji,
+        image: existing.image,
       });
       Object.assign(existing, fields);
     }
@@ -152,6 +161,9 @@ export async function updateTask(req, res, next) {
     if (req.body.due !== undefined) existing.due = req.body.due;
     if (req.body.tag !== undefined) existing.tag = req.body.tag;
     if (req.body.type !== undefined) existing.type = req.body.type;
+    if (req.body.color !== undefined) existing.color = req.body.color;
+    if (req.body.emoji !== undefined) existing.emoji = req.body.emoji;
+    if (req.body.image !== undefined) existing.image = req.body.image;
 
     await existing.save();
 

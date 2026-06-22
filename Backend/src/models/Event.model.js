@@ -10,6 +10,7 @@ const eventSchema = new Schema(
     end: { type: String, required: true, index: true },
     allDay: { type: Boolean, default: false, index: true },
     status: { type: String, default: 'pendiente', index: true },
+    done: { type: Boolean, default: false, index: true },
     client: {
       name: String,
       phone: String,

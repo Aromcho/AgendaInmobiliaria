@@ -2,6 +2,7 @@
 import React from 'react';
 import { RECEP } from '@/lib/recepcionData';
 import Icons from '../Icons/Icons';
+import * as UI from '../UI/UI';
 import './Recepcion.css';
 /* Vista Recepción de Propiedades */
 
@@ -9,8 +10,23 @@ import './Recepcion.css';
   const { useState, useMemo } = React;
   const R = RECEP;
   const I = Icons;
+  const { InfoChip, InfoCard } = UI;
 
   const STEP_ICON = { tasacion: I.Clipboard, autorizacion: I.Check, cartel: I.SignPost, fotos: I.Camera, descripcion: I.FileText };
+  const STEP_EMOJI = { done: "✅", missing: "⚠️", partial: "⏳", na: "➖" };
+  const STATUS_EMOJI = { negro: "✅", rojo: "⚠️", celeste: "🤔", pausa: "⏸️" };
+
+  // Oscurece un color hex un % dado, para el degradé del header (mismo lenguaje que el detalle de evento)
+  function darken(hex, amt) {
+    const clean = String(hex || "").replace("#", "");
+    const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+    const n = parseInt(full, 16);
+    if (Number.isNaN(n)) return hex;
+    const r = Math.max(0, Math.round(((n >> 16) & 255) * (1 - amt)));
+    const g = Math.max(0, Math.round(((n >> 8) & 255) * (1 - amt)));
+    const b = Math.max(0, Math.round((n & 255) * (1 - amt)));
+    return `rgb(${r}, ${g}, ${b})`;
+  }
 
   function progress(item) {
     let done = 0, total = 0;
@@ -28,7 +44,36 @@ import './Recepcion.css';
       state === "na" ? e("span", { className: "sd-dash" }) : e(Ico, { width: 13, height: 13 }));
   }
 
-  // ---------- Fila ----------
+  // ---------- Tarjeta (mobile) ----------
+  function RowMobile({ item, onOpen }) {
+    const st = R.STATUS[item.status];
+    const pr = progress(item);
+    return e("button", { className: "rcm-card", onClick: () => onOpen(item) },
+      e("span", { className: "rcm-num", style: { background: st.bg, color: st.color } }, item.num),
+      e("div", { className: "rcm-main" },
+        e("div", { className: "rcm-prop" }, item.propiedad || "—",
+          item.link ? e("span", { className: "rc-link-ico", title: "Publicada" }, e(I.ExternalLink, { width: 12, height: 12 })) : null),
+        e("div", { className: "rcm-sub" },
+          item.owner ? e("span", null, item.owner) : null,
+          item.fecha ? e("span", null, item.fecha) : null,
+        ),
+        e("div", { className: "rcm-foot" },
+          item.responsable
+            ? e("span", { className: "rcm-resp" },
+                e("span", { className: "rc-avatar", style: { background: item.respColor } }, item.respInit),
+                item.responsable)
+            : e("span", { className: "rc-resp-none" }, "Sin asignar"),
+          e("span", { className: "rcm-valor" }, item.valor || "—"),
+        ),
+      ),
+      e("div", { className: "rcm-side" },
+        e("span", { className: "rc-status-dot", style: { background: st.dot }, title: st.label }),
+        e("span", { className: "rcm-prog" }, `${pr.done}/${pr.total}`),
+      ),
+    );
+  }
+
+  // ---------- Fila (desktop) ----------
   function Row({ item, onOpen }) {
     const st = R.STATUS[item.status];
     const pr = progress(item);
@@ -60,7 +105,7 @@ import './Recepcion.css';
   }
 
   // ---------- Vista principal ----------
-  function RecepView({ items: allItems, query, statusFilter, respFilter, onOpen }) {
+  function RecepView({ items: allItems, query, statusFilter, respFilter, onOpen, isMobile }) {
     const items = useMemo(() => {
       const q = query.trim().toLowerCase();
       return (allItems || []).filter((it) => {
@@ -75,6 +120,12 @@ import './Recepcion.css';
     }, [allItems, query, statusFilter, respFilter]);
 
     if (!items.length) return e("div", { className: "rc-empty" }, "No hay propiedades que coincidan con el filtro.");
+
+    if (isMobile) {
+      return e("div", { className: "rcm-list" },
+        items.map((it, idx) => e(RowMobile, { key: it.num + "-" + idx, item: it, onOpen })),
+      );
+    }
 
     return e("div", { className: "rc-table" },
       e("div", { className: "rc-head" },
@@ -104,7 +155,7 @@ import './Recepcion.css';
       e("div", { className: "rd-step-main" },
         e("div", { className: "rd-step-top" },
           e("span", { className: "rd-step-label" }, s.label),
-          e("span", { className: "rd-step-state " + state }, txt),
+          e("span", { className: "rd-step-state " + state }, STEP_EMOJI[state], " ", txt),
         ),
         val ? e("div", { className: "rd-step-val" }, val) : null,
       ),
@@ -117,46 +168,33 @@ import './Recepcion.css';
     const pr = progress(item);
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
       e("div", { className: "recep-detail", onMouseDown: (e2) => e2.stopPropagation() },
-        e("div", { className: "rd-top", style: { background: st.color } },
-          e("div", { className: "rd-top-l" },
-            e("span", { className: "rd-num" }, "N°" + item.num),
-            e("span", { className: "rd-status" }, st.label),
-          ),
+        e("div", { className: "detail-top", style: { background: `linear-gradient(135deg, ${st.color}, ${darken(st.color, 0.35)})` } },
+          e("span", { className: "detail-deco" }),
+          e("span", { className: "detail-type" }, STATUS_EMOJI[item.status] || "📌", " ", st.label),
           e("button", { className: "detail-x", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
         ),
-        e("div", { className: "rd-body" },
-          e("h2", { className: "rd-title" }, item.propiedad || "—"),
-          e("div", { className: "rd-meta" },
-            item.responsable ? e("div", { className: "rd-meta-i" },
-              e("span", { className: "rc-avatar lg", style: { background: item.respColor } }, item.respInit),
-              e("div", null, e("div", { className: "rd-meta-lbl" }, "Responsable"), e("b", null, item.responsable))) : null,
-            item.fecha ? e("div", { className: "rd-meta-i" },
-              e("span", { className: "rd-meta-ico" }, e(I.Calendar, { width: 17, height: 17 })),
-              e("div", null, e("div", { className: "rd-meta-lbl" }, "Ingreso"), e("b", null, item.fecha))) : null,
-            item.valor ? e("div", { className: "rd-meta-i" },
-              e("span", { className: "rd-meta-ico" }, e(I.Coins, { width: 17, height: 17 })),
-              e("div", null, e("div", { className: "rd-meta-lbl" }, "Valor"), e("b", null, item.valor))) : null,
+        e("div", { className: "detail-body" },
+          e("h2", { className: "detail-title" }, item.propiedad || "—",
+            e("span", { className: "d-chip" }, "N°" + item.num)),
+          e("div", { className: "detail-grid" },
+            e(InfoChip, {
+              icon: item.responsable ? e("span", { className: "rc-avatar", style: { background: item.respColor } }, item.respInit) : e(I.User, { width: 15, height: 15 }),
+              emoji: "🧑‍💼", label: "Responsable", value: item.responsable || "Sin asignar",
+            }),
+            e(InfoChip, { icon: e(I.Calendar, { width: 15, height: 15 }), emoji: "📅", label: "Ingreso", value: item.fecha }),
+            e(InfoChip, { icon: e(I.Coins, { width: 15, height: 15 }), emoji: "💰", label: "Valor", value: item.valor }),
           ),
-          (item.owner || item.phone) ? e("div", { className: "rd-owner" },
-            e("span", { className: "rd-meta-ico" }, e(I.User, { width: 17, height: 17 })),
-            e("div", null,
-              e("div", { className: "rd-meta-lbl" }, "Propietario"),
-              e("b", null, item.owner || "—"),
-              item.phone ? e("a", { className: "rd-phone", href: "tel:" + item.phone.replace(/\s/g, "") }, e(I.Phone, { width: 13, height: 13 }), item.phone) : null,
-            ),
-          ) : null,
-          (item.superficie || item.idPublicacion) ? e("div", { className: "rd-meta" },
-            item.superficie ? e("div", { className: "rd-meta-i" },
-              e("span", { className: "rd-meta-ico" }, e(I.Building, { width: 17, height: 17 })),
-              e("div", null, e("div", { className: "rd-meta-lbl" }, "Superficie"), e("b", null, item.superficie))) : null,
-            item.idPublicacion ? e("div", { className: "rd-meta-i" },
-              e("span", { className: "rd-meta-ico" }, e(I.Tag, { width: 17, height: 17 })),
-              e("div", null, e("div", { className: "rd-meta-lbl" }, "ID publicación"), e("b", null, item.idPublicacion))) : null,
-          ) : null,
-          item.notas ? e("div", { className: "rd-notas" },
-            e("span", { className: "rd-meta-ico" }, e(I.FileText, { width: 17, height: 17 })),
-            e("div", null, e("div", { className: "rd-meta-lbl" }, "Notas"), e("p", null, item.notas)),
-          ) : null,
+          (item.owner || item.phone) ? e(InfoCard, {
+            icon: e(I.User, { width: 15, height: 15 }), emoji: "🙋", label: "Propietario", title: item.owner || "—",
+            sub: item.phone ? e("a", { className: "rd-phone", href: "tel:" + item.phone.replace(/\s/g, "") }, e(I.Phone, { width: 13, height: 13 }), item.phone) : null,
+          }) : null,
+          e("div", { className: "detail-grid" },
+            e(InfoChip, { icon: e(I.Building, { width: 15, height: 15 }), emoji: "📐", label: "Superficie", value: item.superficie }),
+            e(InfoChip, { icon: e(I.Tag, { width: 15, height: 15 }), emoji: "🔖", label: "ID publicación", value: item.idPublicacion }),
+          ),
+          item.notas ? e(InfoCard, {
+            icon: e(I.FileText, { width: 15, height: 15 }), emoji: "📝", label: "Notas", sub: item.notas,
+          }) : null,
           e("div", { className: "rd-steps-head" },
             e("span", null, "Estado de recepción"),
             e("span", { className: "rd-prog-pill", style: { color: st.color, background: st.bg } }, `${pr.done} de ${pr.total} pasos`),
@@ -226,8 +264,9 @@ import './Recepcion.css';
       });
     }
 
+    const curStatus = R.STATUS[f.status];
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
-      e("div", { className: "form", onMouseDown: (e2) => e2.stopPropagation() },
+      e("div", { className: "form", style: { "--form-accent": curStatus.color }, onMouseDown: (e2) => e2.stopPropagation() },
         e("div", { className: "form-head" },
           e("h2", null, isEdit ? `Editar N°${initial.num}` : "Nueva propiedad"),
           e("button", { className: "detail-x dark", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),

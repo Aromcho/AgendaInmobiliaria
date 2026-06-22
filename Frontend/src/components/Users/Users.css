@@ -6,6 +6,27 @@
 .users-list{display:flex;flex-direction:column;gap:8px;}
 .users-row{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#fff;border:1px solid var(--line-2);
   border-radius:12px;padding:11px 16px;}
+.users-row-id{display:flex;align-items:center;gap:11px;min-width:0;}
 .role-select{border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:700;
   color:var(--ink-2);background:var(--line-2);outline:none;cursor:pointer;}
 .role-select:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
+
+.users-error{color:#9c2e2a;font-size:12.5px;font-weight:600;margin:0;flex:1 1 100%;}
+
+/* Directorio de usuarios (mobile) */
+.users-card-mobile{padding:14px;overflow-y:auto;}
+.um-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.um-list{display:flex;flex-direction:column;gap:9px;}
+.um-card{display:flex;align-items:center;gap:12px;background:#fff;border-radius:14px;padding:12px 14px;
+  text-align:left;box-shadow:var(--shadow-sm);transition:transform .12s;}
+.um-card:active{transform:scale(.98);}
+.um-main{flex:1;min-width:0;}
+.um-name{font-size:14.5px;font-weight:700;color:var(--ink);}
+.um-role{font-size:12px;font-weight:600;color:var(--green-700);margin-top:1px;}
+.um-chev{color:var(--ink-3);display:flex;flex-shrink:0;}
+
+@media (max-width:760px){
+  .users-card{padding:14px;}
+  .users-form input,.users-form select{flex:1 1 140px;}
+  .users-row{flex-wrap:wrap;gap:10px;}
+}

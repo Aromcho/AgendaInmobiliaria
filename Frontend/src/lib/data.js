@@ -34,6 +34,15 @@
       soft: "#e0d6f7",
       ink: "#4b3393",
     },
+    tasacion: {
+      key: "tasacion",
+      label: "Tasación",
+      short: "Tasación",
+      color: "#b8791b",
+      bg: "#fbf0db",
+      soft: "#f6e3b3",
+      ink: "#7a4f0e",
+    },
     vencimiento: {
       key: "vencimiento",
       label: "Vencimiento contrato",
@@ -63,13 +72,14 @@
 
   // ---------- Agentes (equipo real) ----------
   const AGENTS = [
-    { id: "a1", name: "Silvia Fernández", initials: "SF", color: "#15784f", role: "Titular" },
-    { id: "a2", name: "Cecilia", initials: "C", color: "#7257c9", role: "Equipo" },
-    { id: "a3", name: "Paul", initials: "P", color: "#0e8a8a", role: "Equipo" },
-    { id: "a4", name: "Fabiana", initials: "F", color: "#c2861a", role: "Equipo" },
-    { id: "a5", name: "Pablo", initials: "P", color: "#2563eb", role: "Equipo" },
+    { id: "a1", name: "Silvia Fernández", initials: "SF", color: "#15784f", role: "Titular", email: "braicesfernandez@gmail.com" },
+    { id: "a2", name: "Cecilia", initials: "C", color: "#7257c9", role: "Equipo", email: "martinoanacecilia@gmail.com" },
+    { id: "a3", name: "Paul", initials: "P", color: "#0e8a8a", role: "Equipo", email: "paulgarciapamapas@gamil.com" },
+    { id: "a4", name: "Fabiana", initials: "F", color: "#c2861a", role: "Equipo", email: "garciaafaa@gmail.com" },
+    { id: "a5", name: "Pablo", initials: "P", color: "#2563eb", role: "Equipo", email: "Martino_pablo@hotmail.com" },
     { id: "a6", name: "Conrado", initials: "C", color: "#15784f", role: "Equipo" },
     { id: "a7", name: "Curly", initials: "C", color: "#b8791b", role: "Equipo" },
+    { id: "a8", name: "Arom Aguilar", initials: "AA", color: "#9d4edd", role: "Super admin", email: "barriosarom@gmail.com" },
   ];
 
   // ---------- Propiedades (se cargan desde la app) ----------
@@ -121,11 +131,38 @@
   function minutesOfDay(dt) { const x = parse(dt); return x.getHours()*60 + x.getMinutes(); }
   function nights(ev) { return Math.max(1, dayDiff(ev.start, ev.end)); }
 
+  // ---------- Línea de fecha/hora legible de un evento ----------
+  function eventDateLine(ev) {
+    const multi = ev.allDay && dayDiff(ev.start, ev.end) >= 1;
+    return ev.allDay
+      ? (multi
+          ? `${parse(ev.start).getDate()} ${MONTHS_SHORT[parse(ev.start).getMonth()]} → ${parse(ev.end).getDate()} ${MONTHS_SHORT[parse(ev.end).getMonth()]} · ${nights(ev)} noches`
+          : `${DAYS[(parse(ev.start).getDay()+6)%7]} ${parse(ev.start).getDate()} de ${MONTHS[parse(ev.start).getMonth()]}`)
+      : `${DAYS[(parse(ev.start).getDay()+6)%7]} ${parse(ev.start).getDate()} · ${fmtTime(ev.start)} – ${fmtTime(ev.end)}`;
+  }
+
+  // ---------- Estado de vencimiento de un evento ("", "soon", "past") ----------
+  function eventDueState(ev) {
+    if (!ev || ev.status === "cancelada" || ev.done) return "";
+    const now = new Date();
+    if (ev.allDay) {
+      const diff = dayDiff(startOfDay(now), parse(ev.start));
+      if (diff < 0) return "past";
+      if (diff <= 2) return "soon";
+      return "";
+    }
+    const start = parse(ev.start), end = parse(ev.end);
+    if (end < now) return "past";
+    const minsToStart = (start - now) / 60000;
+    if (minsToStart <= 120) return "soon";
+    return "";
+  }
+
   export const CAL = {
     EVENT_TYPES, STATUS, AGENTS, PROPERTIES, EVENTS, TODAY: startOfDay(new Date()),
     MONTHS, MONTHS_SHORT, DAYS, DAYS_SHORT,
     parse, startOfDay, addDays, addMonths, startOfMonth, startOfWeek,
-    isSameDay, isSameMonth, dayDiff, ymd, fmtTime, fmtMonthYear, minutesOfDay, nights,
+    isSameDay, isSameMonth, dayDiff, ymd, fmtTime, fmtMonthYear, minutesOfDay, nights, eventDateLine, eventDueState,
     propById: (id) => PROPERTIES.find(p => p.id === id) || null,
     agentById: (id) => AGENTS.find(a => a.id === id) || null,
   };

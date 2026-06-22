@@ -9,8 +9,26 @@ const e = React.createElement;
 const { useState, useRef, useEffect, useCallback } = React;
 const I = Icons;
 
-const TOAST_TTL = 6000;
+const POLL_MS = 10000;
 const EMOJI = { task: '📝', event: '⏰', reception: '🏠' };
+
+function requestBrowserPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission === 'default') Notification.requestPermission();
+}
+
+function pushBrowserNotification(item) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(item.title, {
+      body: item.message || '',
+      icon: '/logo.webp',
+      tag: item._id,
+    });
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch { /* algunos navegadores mobile no soportan new Notification() en foreground */ }
+}
 
 function timeAgo(dateStr) {
   const min = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -50,15 +68,12 @@ function NotificationBell({ onNavigate }) {
   const [toasts, setToasts] = useState([]);
   const ref = useRef(null);
   const seenIds = useRef(null);
-  const timers = useRef([]);
 
+  // El toast queda en pantalla hasta que el usuario lo cierra o lo clickea
+  // (no se auto-descarta): así "se acumulan" si no está mirando la pantalla.
   const pushToast = useCallback((item) => {
     const toastId = `${item._id}-${Date.now()}`;
     setToasts((list) => [...list, { ...item, _toastId: toastId }]);
-    const timer = setTimeout(() => {
-      setToasts((list) => list.filter((t) => t._toastId !== toastId));
-    }, TOAST_TTL);
-    timers.current.push(timer);
   }, []);
 
   const load = useCallback(() => {
@@ -66,10 +81,17 @@ function NotificationBell({ onNavigate }) {
       if (!data) return;
       const newItems = data.items || [];
       if (seenIds.current === null) {
+        // Primera carga de la sesión: "ponerse al día" con lo que quedó pendiente
+        // mientras no estaba conectado (toast sí, notificación del navegador no,
+        // para no inundar con avisos viejos apenas entra).
+        newItems.forEach((it) => { if (!it.read) pushToast(it); });
         seenIds.current = new Set(newItems.map((it) => it._id));
       } else {
         newItems.forEach((it) => {
-          if (!it.read && !seenIds.current.has(it._id)) pushToast(it);
+          if (!it.read && !seenIds.current.has(it._id)) {
+            pushToast(it);
+            pushBrowserNotification(it);
+          }
           seenIds.current.add(it._id);
         });
       }
@@ -79,9 +101,12 @@ function NotificationBell({ onNavigate }) {
   }, [pushToast]);
 
   useEffect(() => {
+    requestBrowserPermission();
     load();
-    const id = setInterval(load, 30000);
-    return () => { clearInterval(id); timers.current.forEach(clearTimeout); };
+    const id = setInterval(load, POLL_MS);
+    const onOnline = () => load();
+    window.addEventListener('online', onOnline);
+    return () => { clearInterval(id); window.removeEventListener('online', onOnline); };
   }, [load]);
 
   useEffect(() => {

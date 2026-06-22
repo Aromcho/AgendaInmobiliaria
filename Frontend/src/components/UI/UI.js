@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { CAL } from '@/lib/data';
 import { RECEP } from '@/lib/recepcionData';
 import Icons from '../Icons/Icons';
@@ -14,14 +15,95 @@ import './UI.css';
   const I = Icons;
 
   const TYPE_ICON = {
-    reserva: I.Bed, visita: I.Eye, tarea: I.Tag, vencimiento: I.Alert, mantenimiento: I.Wrench,
+    reserva: I.Bed, visita: I.Eye, tarea: I.Tag, tasacion: I.Coins, vencimiento: I.Alert, mantenimiento: I.Wrench,
   };
 
-  // ---------- Avatar ----------
+  // ---------- Confetti (celebración, por portal directo al <body>) ----------
+  const CONFETTI_COLORS = ['#15784f', '#2563eb', '#b8791b', '#7257c9', '#0e8a8a'];
+  const CONFETTI_EMOJIS = ['🎉', '✨', '🥳', '⭐'];
+  function makeConfetti(n = 34) {
+    return Array.from({ length: n }, (_, i) => {
+      const angle = (Math.PI * 2 * i) / n + (Math.random() * 0.6 - 0.3);
+      const dist = 220 + Math.random() * 340; // explota muy por fuera del elemento de origen
+      const isEmoji = i % 3 === 0;
+      const size = isEmoji ? 18 + Math.round(Math.random() * 10) : 6 + Math.round(Math.random() * 5);
+      return {
+        id: i,
+        emoji: isEmoji ? CONFETTI_EMOJIS[(i / 3) % CONFETTI_EMOJIS.length] : null,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: `${size}px`,
+        tx: `${Math.cos(angle) * dist}px`,
+        ty: `${Math.sin(angle) * dist - 18}px`,
+        rot: `${Math.round(Math.random() * 720 - 360)}deg`,
+        delay: `${(Math.random() * 0.12).toFixed(2)}s`,
+      };
+    });
+  }
+  // x,y: coordenadas de pantalla (viewport) donde debe explotar
+  function Confetti({ x, y, onDone }) {
+    const piecesRef = useRef(null);
+    if (!piecesRef.current) piecesRef.current = makeConfetti();
+    useEffect(() => {
+      const t = setTimeout(onDone, 1350);
+      return () => clearTimeout(t);
+    }, [onDone]);
+    if (typeof document === "undefined") return null;
+    return createPortal(
+      e("div", { className: "confetti-burst", style: { position: "fixed", left: x, top: y } },
+        piecesRef.current.map((p) => e("span", {
+          key: p.id,
+          className: "confetti-piece" + (p.emoji ? " emoji" : ""),
+          style: {
+            "--c-color": p.color, "--c-tx": p.tx, "--c-ty": p.ty, "--c-rot": p.rot,
+            "--c-delay": p.delay, "--c-size": p.size,
+          },
+        }, p.emoji)),
+      ),
+      document.body,
+    );
+  }
+
+  // ---------- Avatar con foto real (carpeta /public/avatar, nombrada por email) ----------
+  const AVATAR_PALETTE = ['#15784f', '#2563eb', '#b8791b', '#7257c9', '#0e8a8a', '#d8504a', '#c2861a', '#0a5e5e', '#9d4edd', '#e85d75'];
+  const AVATAR_EXTS = ['png', 'jpg', 'jpeg', 'webp'];
+  function initialsOf(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+  function colorOf(str) {
+    const s = String(str || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  }
+  // Prueba la foto en /avatar/<email>.<ext>, probando extensiones; si ninguna existe, cae a iniciales animadas
+  function PhotoAvatar({ email, name, initials, color, size }) {
+    const [extIdx, setExtIdx] = useState(0);
+    const [failed, setFailed] = useState(!email);
+    const ini = initials || initialsOf(name);
+    const bg = color || colorOf(email || name);
+    if (failed || !email) {
+      return e("span", { className: "avatar avatar-pop", title: name || email,
+        style: { width: size, height: size, background: bg, fontSize: size * 0.36 } }, ini);
+    }
+    return e("img", {
+      className: "avatar avatar-photo avatar-pop", title: name || email, alt: ini,
+      src: `/avatar/${email}.${AVATAR_EXTS[extIdx]}`,
+      style: { width: size, height: size },
+      onError: () => {
+        if (extIdx < AVATAR_EXTS.length - 1) setExtIdx(extIdx + 1);
+        else setFailed(true);
+      },
+    });
+  }
   function Avatar({ agent, size = 28 }) {
     if (!agent) return null;
-    return e("span", { className: "avatar", title: agent.name,
-      style: { width: size, height: size, background: agent.color, fontSize: size * 0.36 } }, agent.initials);
+    return e(PhotoAvatar, { email: agent.email, name: agent.name, initials: agent.initials, color: agent.color, size });
+  }
+  // Avatar del usuario logueado (sesión), por email — para el header y vistas de usuarios
+  function ProfileAvatar({ email, name, size = 32 }) {
+    return e(PhotoAvatar, { email, name, size });
   }
 
   // ---------- Punto de tipo ----------
@@ -35,6 +117,34 @@ import './UI.css';
     const s = C.STATUS[status];
     if (!s) return null;
     return e("span", { className: "status-badge", style: { color: s.color, background: s.bg } }, s.label);
+  }
+
+  // ---------- Tarjetas de datos para modales de detalle ----------
+  // Mini-tarjeta (grilla superior, ej. 2-3 por fila): ícono + texto, con emoji que aparece al hover
+  function InfoChip({ icon, emoji, label, value, tint }) {
+    if (!value) return null;
+    return e("div", { className: "detail-chip" },
+      e("span", { className: "dc-ico", style: tint ? { color: tint.color, background: tint.bg } : null }, icon),
+      e("div", { className: "dc-text" },
+        e("div", { className: "dc-label" }, label),
+        e("div", { className: "dc-val" }, value),
+      ),
+      emoji ? e("span", { className: "dc-emoji" }, emoji) : null,
+    );
+  }
+
+  // Tarjeta ancha (ocupa todo el ancho de la grilla): mismo lenguaje visual, para datos más largos
+  function InfoCard({ icon, emoji, label, title, sub }) {
+    if (!title && !sub) return null;
+    return e("div", { className: "detail-chip full" },
+      e("span", { className: "dc-ico" }, icon),
+      e("div", { className: "dc-text" },
+        e("div", { className: "dc-label" }, label),
+        title ? e("div", { className: "dc-val" }, title) : null,
+        sub ? e("div", { className: "dc-sub" }, sub) : null,
+      ),
+      emoji ? e("span", { className: "dc-emoji" }, emoji) : null,
+    );
   }
 
   // ---------- Mini calendario ----------
@@ -273,6 +383,6 @@ import './UI.css';
     );
   }
 
-  export { Avatar, TypeDot, StatusBadge, MiniCalendar, FiltersPopover, Search,
+  export { Avatar, ProfileAvatar, TypeDot, StatusBadge, InfoChip, InfoCard, Confetti, MiniCalendar, FiltersPopover, Search,
     CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar, TYPE_ICON };
 

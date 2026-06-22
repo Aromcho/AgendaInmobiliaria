@@ -91,9 +91,68 @@
 .tab:hover{background:var(--mint-50);}
 .tab.active{background:var(--green-700);color:#fff;box-shadow:0 6px 16px rgba(21,120,79,.32);}
 
+/* Tarjetas de datos en modales de detalle (InfoChip / InfoCard) */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin-bottom:9px;}
+.detail-chip{position:relative;display:flex;align-items:center;gap:11px;background:var(--mint-50);border-radius:14px;
+  padding:11px 14px;overflow:hidden;transition:transform .16s,box-shadow .16s,background .16s;}
+.detail-chip:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(16,40,30,.12);background:var(--mint-100);}
+.detail-chip.full{grid-column:1/-1;margin-bottom:9px;}
+.dc-ico{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;
+  background:var(--mint-100);color:var(--green-700);}
+.dc-ico .avatar{box-shadow:none;}
+.dc-text{flex:1;min-width:0;}
+.dc-label{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-3);margin-bottom:2px;}
+.dc-val{font-size:14px;font-weight:700;color:var(--ink);line-height:1.3;}
+.dc-sub{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.dc-emoji{position:absolute;top:10px;right:11px;font-size:15px;line-height:1;pointer-events:none;
+  opacity:0;transform:scale(.4) rotate(-16deg);transition:opacity .2s,transform .2s;}
+.detail-chip:hover .dc-emoji{opacity:1;transform:scale(1) rotate(8deg);animation:dc-bounce 1s ease-in-out infinite;}
+@keyframes dc-bounce{0%,100%{transform:scale(1) rotate(8deg) translateY(0);}50%{transform:scale(1.1) rotate(-6deg) translateY(-3px);}}
+
+/* Confetti (UI.Confetti) — se renderiza por portal en <body>, posicionado vía estilo
+   inline (position:fixed;left;top) anclado al punto de origen. Sin tamaño propio,
+   así no agrega scroll a ningún contenedor y puede explotar libremente por la pantalla. */
+.confetti-burst{pointer-events:none;overflow:visible;z-index:9999;}
+.confetti-burst::before{content:"";position:absolute;top:50%;left:50%;width:16px;height:16px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,255,255,.95),transparent 70%);
+  transform:translate(-50%,-50%) scale(0);opacity:.95;animation:confetti-ring .55s ease-out forwards;}
+@keyframes confetti-ring{to{transform:translate(-50%,-50%) scale(22);opacity:0;}}
+.confetti-piece{position:absolute;top:50%;left:50%;width:var(--c-size,7px);height:var(--c-size,7px);border-radius:2px;
+  background:var(--c-color);opacity:0;animation:confetti-pop 1.25s cubic-bezier(.18,.7,.3,1) forwards;
+  animation-delay:var(--c-delay,0s);display:flex;align-items:center;justify-content:center;}
+.confetti-piece:nth-child(odd){border-radius:50%;}
+.confetti-piece.emoji{background:none;width:auto;height:auto;font-size:var(--c-size,18px);line-height:1;border-radius:0;}
+@keyframes confetti-pop{
+  0%{opacity:1;transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(.6);}
+  18%{opacity:1;transform:translate(-50%,-50%) translate(calc(var(--c-tx) * .35),calc(var(--c-ty) * .35 - 10px)) rotate(calc(var(--c-rot) * .3)) scale(1.15);}
+  100%{opacity:0;transform:translate(-50%,-50%) translate(var(--c-tx),var(--c-ty)) rotate(var(--c-rot)) scale(.5);}
+}
+
 @media (max-width:1080px){
   .search{width:170px;}
   .vs-btn span{display:none;}
   .vs-btn{padding:8px 11px;}
   .tb-sub{display:none;}
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width:760px){
+  .toolbar{flex-wrap:wrap;row-gap:8px;}
+  .tb-left{gap:8px;}
+  .tb-title{font-size:16.5px;}
+  .nav-arrows{padding:2px;}
+  .nav-arrow{width:28px;height:28px;}
+  .today-btn{padding:7px 12px;font-size:12.5px;}
+  .search{width:auto;flex:1;min-width:0;}
+  .range-wrap{display:none;}
+  .owner-switch{max-width:100%;}
+  .new-btn span{display:none;}
+  .new-btn{padding:10px 12px;}
+
+  /* Barra de pestañas: nav inferior de ancho completo, estilo app mobile */
+  .tabbar{position:fixed;left:0;right:0;bottom:0;transform:none;border-radius:0;
+    padding:6px 2px;box-shadow:0 -4px 20px rgba(8,30,22,.18);justify-content:space-around;
+    padding-bottom:calc(6px + env(safe-area-inset-bottom));}
+  .tab{flex:1;flex-direction:column;gap:2px;padding:7px 2px;border-radius:12px;font-size:10.5px;}
+  .tab span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
 }

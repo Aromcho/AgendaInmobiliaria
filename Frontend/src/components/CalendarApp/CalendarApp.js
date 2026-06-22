@@ -2,6 +2,8 @@
 import React from 'react';
 import { CAL } from '@/lib/data';
 import { RECEP } from '@/lib/recepcionData';
+import { useIsMobile } from '@/lib/useIsMobile';
+import Icons from '../Icons/Icons';
 import * as UI from '../UI/UI';
 import * as Views from '../Views/Views';
 import * as Modals from '../Modals/Modals';
@@ -16,19 +18,34 @@ import { createResource, deleteResource, fetchCollection, logout as apiLogout, u
 const e = React.createElement;
 const { useState, useMemo, useEffect, useCallback } = React;
 const C = CAL;
-const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar } = UI;
-const { MonthView, MultiMonthView, WeekView, DayView, AgendaView } = Views;
+const I = Icons;
+const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar, ProfileAvatar } = UI;
+const { MonthView, MultiMonthView, WeekView, DayView, AgendaView, DayEventList, MobileMonth } = Views;
 const MONTHS_BY_VIEW = { quarter: 3, half: 6, year: 12 };
-const { EventDetail, EventForm } = Modals;
+const { EventDetail, EventForm, OverdueModal } = Modals;
 const { Board, TaskForm } = TareasNS;
 const { RecepView, RecepDetail, RecepForm } = RecepNS;
 
+const MOBILE_TITLES = { calendario: "Calendario", tareas: "Tareas del equipo", recepcion: "Recepción", agenda: "Agenda", usuarios: "Usuarios" };
+
 function initFilter(keys) { const o = {}; keys.forEach((k) => (o[k] = true)); return o; }
+
+// Mini barra de navegación de fecha (mobile): ‹ Hoy/título ›
+function MobileDateNav({ title, onPrev, onNext, onToday }) {
+  return e("div", { className: "mob-cal-nav" },
+    e("button", { className: "mob-nav-btn", onClick: onPrev }, e(I.ChevronLeft, { width: 16, height: 16 })),
+    onToday ? e("button", { className: "mob-cal-today", onClick: onToday }, "Hoy") : null,
+    e("span", { className: "mob-cal-title" }, title),
+    e("button", { className: "mob-nav-btn", onClick: onNext }, e(I.Chevron, { width: 16, height: 16 })),
+  );
+}
 
 function App({ onLogout, session }) {
   const isSuperAdmin = session?.role === 'SUPER_ADMIN';
   const canManageTasks = session?.role === 'ADMIN' || session?.role === 'SUPER_ADMIN';
-  const [tab, setTab] = useState("calendario");      // calendario | tareas | recepcion | agenda
+  const isMobile = useIsMobile();
+  const [mobileDay, setMobileDay] = useState(C.TODAY);
+  const [tab, setTab] = useState("tareas");           // calendario | tareas | recepcion | agenda
   const [view, setView] = useState("month");          // sub-vista del calendario
   const [cursor, setCursor] = useState(C.TODAY);
   const [events, setEvents] = useState(() => C.EVENTS.map((x) => ({ ...x })));
@@ -43,6 +60,7 @@ function App({ onLogout, session }) {
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState(null);
+  const [overdueQueue, setOverdueQueue] = useState(null); // null = todavía no se calculó; [] = sin pendientes
   // recepción
   const [recepStatus, setRecepStatus] = useState(() => initFilter(Object.keys(RECEP.STATUS)));
   const [recepResp, setRecepResp] = useState("__all");
@@ -62,6 +80,29 @@ function App({ onLogout, session }) {
     });
     return () => { active = false; };
   }, []);
+
+  // ---- agendas que ya vencieron sin resolverse: se detectan una sola vez por sesión ----
+  useEffect(() => {
+    if (overdueQueue !== null || !events.length) return;
+    setOverdueQueue(events.filter((ev) => C.eventDueState(ev) === "past").map((ev) => ev.id));
+  }, [events, overdueQueue]);
+
+  const overdueEvents = useMemo(
+    () => (overdueQueue || []).map((id) => events.find((x) => x.id === id)).filter(Boolean),
+    [overdueQueue, events]
+  );
+  const currentOverdue = overdueEvents[0] || null;
+  const dismissOverdue = (id) => setOverdueQueue((q) => (q || []).filter((x) => x !== id));
+  const onOverdueDone = async (ev) => {
+    const updated = await updateResource('events', ev.id, { done: true });
+    if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, done: true } : x)));
+    dismissOverdue(ev.id);
+  };
+  const onOverduePostpone = async (ev, newStart, newEnd) => {
+    const updated = await updateResource('events', ev.id, { start: newStart, end: newEnd, done: false });
+    if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, start: newStart, end: newEnd, done: false } : x)));
+    dismissOverdue(ev.id);
+  };
 
   // ---- carga del tablero de tareas (3 columnas fijas del backend) ----
   useEffect(() => {
@@ -197,7 +238,9 @@ function App({ onLogout, session }) {
     });
   }, []);
   const editTaskCard = async (fields) => {
-    const updated = await updateResource('tasks', fields.id, { title: fields.title, description: fields.description });
+    const updated = await updateResource('tasks', fields.id, {
+      title: fields.title, description: fields.description, color: fields.color, emoji: fields.emoji, image: fields.image,
+    });
     if (!updated) return;
     setTaskLists((lists) => lists.map((l) => ({
       ...l,
@@ -209,6 +252,15 @@ function App({ onLogout, session }) {
     await deleteResource('tasks', cardId);
     setTaskLists((lists) => lists.map((l) => (l.id === listId ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) } : l)));
   };
+  const setCardField = (field) => async (listId, cardId, value) => {
+    setTaskLists((lists) => lists.map((l) => (l.id !== listId ? l : {
+      ...l, cards: l.cards.map((c) => (c.id === cardId ? { ...c, [field]: value } : c)),
+    })));
+    await updateResource('tasks', cardId, { [field]: value });
+  };
+  const colorTaskCard = setCardField('color');
+  const emojiTaskCard = setCardField('emoji');
+  const imageTaskCard = setCardField('image');
   const moveTaskCard = async (next, updates, moveInfo) => {
     setTaskLists(next);
     if (moveInfo && moveInfo.toListId !== moveInfo.fromListId) {
@@ -244,34 +296,74 @@ function App({ onLogout, session }) {
 
   // ---- toolbar + contenido por pestaña ----
   let toolbar, content;
+  let mobileFab = null;
   if (tab === "calendario") {
     toolbar = e(CalendarToolbar, { view, setView, cursor, setCursor, title: calTitle, onPrev, onNext, onToday,
       query, setQuery, typeFilter, toggleType, agentFilter, toggleAgent, counts });
     const props = { cursor, events: visible, onOpen: setDetail, onNew: openNew };
-    const inner = view === "month" ? e(MonthView, Object.assign({}, props, { goDay }))
-      : view === "week" ? e(WeekView, props)
-      : view === "day" ? e(DayView, props)
-      : MONTHS_BY_VIEW[view] ? e(MultiMonthView, Object.assign({}, props, { goDay, months: MONTHS_BY_VIEW[view] }))
-      : e(DayView, props);
-    content = e("div", { className: "view-card", "data-view": view }, inner);
+    if (isMobile) {
+      content = e(React.Fragment, null,
+        e("div", { className: "view-card mobile-month-card" },
+          e(MobileDateNav, { title: calTitle, onPrev, onNext, onToday }),
+          e(MobileMonth, { cursor, events: visible, selectedDay: mobileDay, onDayTap: setMobileDay })),
+        e("div", { className: "view-card day-card-wrap" },
+          e(DayEventList, { day: mobileDay, events: visible, onOpen: setDetail })),
+      );
+      mobileFab = () => openNew(mobileDay);
+    } else {
+      const inner = view === "month" ? e(MonthView, Object.assign({}, props, { goDay }))
+        : view === "week" ? e(WeekView, props)
+        : view === "day" ? e(DayView, props)
+        : MONTHS_BY_VIEW[view] ? e(MultiMonthView, Object.assign({}, props, { goDay, months: MONTHS_BY_VIEW[view] }))
+        : e(DayView, props);
+      content = e("div", { className: "view-card", "data-view": view }, inner);
+    }
   } else if (tab === "agenda") {
     toolbar = e(AgendaToolbar, { cursor, title: agendaTitle, onPrev: onPrevMonth, onNext: onNextMonth, onToday, query, setQuery });
-    content = e("div", { className: "view-card agenda-card" }, e(AgendaView, { cursor, events: visible, onOpen: setDetail }));
+    if (isMobile) {
+      content = e("div", { className: "view-card agenda-card" },
+        e(MobileDateNav, { title: agendaTitle, onPrev: onPrevMonth, onNext: onNextMonth }),
+        e(AgendaView, { cursor, events: visible, onOpen: setDetail }));
+    } else {
+      content = e("div", { className: "view-card agenda-card" }, e(AgendaView, { cursor, events: visible, onOpen: setDetail }));
+    }
   } else if (tab === "recepcion") {
     toolbar = e(RecepcionToolbar, { items: reception, query, setQuery, statusFilter: recepStatus, toggleStatus, respFilter: recepResp, setRespFilter: setRecepResp, onNew: () => setRecepForm({ initial: null }) });
-    content = e("div", { className: "view-card recep-card" },
-      e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail }));
+    if (isMobile) {
+      content = e("div", { className: "view-card recep-card" },
+        e("div", { className: "mob-status-row" },
+          Object.values(RECEP.STATUS).map((s) => e("button", {
+            key: s.key, className: "st-chip" + (recepStatus[s.key] ? "" : " off"), onClick: () => toggleStatus(s.key),
+          }, e("span", { className: "st-chip-dot", style: { background: s.dot } }), s.label))),
+        e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail, isMobile }));
+      mobileFab = () => setRecepForm({ initial: null });
+    } else {
+      content = e("div", { className: "view-card recep-card" },
+        e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail, isMobile }));
+    }
   } else if (tab === "usuarios") {
     toolbar = e("div", { className: "toolbar" },
       e("div", { className: "tb-left" }, e("h1", { className: "tb-title" }, "Usuarios")));
     content = e(UsuariosView, null);
   } else {
     toolbar = e(TareasToolbar, { query, setQuery, canManageTasks, teamUsers, taskOwner, setTaskOwner });
-    content = e(Board, {
+    const board = e(Board, {
       lists: taskLists, query, onAddCard: addTaskCard, onDelCard: deleteTaskCard,
-      onEditCard: (listId, card) => setTaskForm({ listId, card }), onMoveCard: moveTaskCard, onAddList: addTaskList,
+      onEditCard: (listId, card) => setTaskForm({ listId, card }), onColorCard: colorTaskCard, onEmojiCard: emojiTaskCard, onImageCard: imageTaskCard,
+      onMoveCard: moveTaskCard, onAddList: addTaskList, currentUserId: session?.id,
       cardAnim, onAnimEnd: onCardAnimEnd,
     });
+    content = isMobile && canManageTasks
+      ? e(React.Fragment, null,
+          e("div", { className: "mob-owner-row" },
+            e("button", { className: "owner-chip" + (!taskOwner ? " on" : ""), onClick: () => setTaskOwner(null) }, "Mis tareas"),
+            teamUsers.map((u) => e("button", {
+              key: u._id, className: "owner-chip" + (taskOwner === u._id ? " on" : ""), onClick: () => setTaskOwner(u._id),
+            }, u.name)),
+          ),
+          board,
+        )
+      : board;
   }
 
   return e("div", { className: "app" },
@@ -280,11 +372,16 @@ function App({ onLogout, session }) {
     e("div", { className: "shell" },
       e("div", { className: "shell-top" },
         e("div", { className: "brand-mini" }, e("img", { src: "/logo.webp", alt: "Silvia Fernández" })),
-        toolbar,
+        isMobile ? e("h1", { className: "mobile-tab-title" }, MOBILE_TITLES[tab] || "") : toolbar,
         e(NotificationBell, { onNavigate: setTab }),
-        e("button", { className: "today-btn", onClick: handleLogout, title: "Cerrar sesión" }, "Salir"),
+        e("div", { className: "profile-mini" },
+          e(ProfileAvatar, { email: session?.email, name: session?.name, size: 34 }),
+          e("span", { className: "profile-mini-name" }, session?.name),
+        ),
+        e("button", { className: "today-btn" + (isMobile ? " sm" : ""), onClick: handleLogout, title: "Cerrar sesión" }, "Salir"),
       ),
       e("div", { className: "shell-main", "data-tab": tab }, content),
+      mobileFab ? e("button", { className: "mobile-fab", onClick: mobileFab, title: "Nuevo" }, e(I.Plus, { width: 22, height: 22 })) : null,
     ),
     e(TabBar, { tab, setTab, isSuperAdmin }),
     detail ? e(EventDetail, { ev: detail, onClose: () => setDetail(null), onEdit, onDelete }) : null,
@@ -303,6 +400,11 @@ function App({ onLogout, session }) {
       initial: recepForm.initial,
       onClose: () => setRecepForm(null),
       onSave: recepForm.initial ? editReception : addReception,
+    }) : null,
+    (currentOverdue && !detail && !form && !taskForm && !recepDetail && !recepForm) ? e(OverdueModal, {
+      ev: currentOverdue, queuePos: 1, queueLen: overdueEvents.length,
+      onClose: () => dismissOverdue(currentOverdue.id),
+      onDone: onOverdueDone, onPostpone: onOverduePostpone,
     }) : null,
   );
 }

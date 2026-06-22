@@ -19,9 +19,14 @@ const taskSchema = new Schema(
     agentId: { type: String, default: 'a1', index: true },
     due: { type: String, default: '' },
     tag: { type: String, default: '' },
+    color: { type: String, default: '' },
+    emoji: { type: String, default: '' },
+    image: { type: String, default: '' },
     position: { type: Number, default: 0 },
     createdBy: { type: String, default: '', index: true },
     createdByName: { type: String, default: '' },
+    assignedBy: { type: String, default: '' },
+    assignedByName: { type: String, default: '' },
   },
   { timestamps: true }
 );
