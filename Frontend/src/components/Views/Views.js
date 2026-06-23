@@ -350,8 +350,9 @@ import './Views.css';
     const groups = [];
     const map = {};
     list.forEach((ev) => {
-      const key = C.ymd(C.startOfDay(C.parse(ev.start) < first ? first : ev.start));
-      if (!map[key]) { map[key] = { key, date: C.parse(key), items: [] }; groups.push(map[key]); }
+      const d = C.startOfDay(C.parse(ev.start) < first ? first : ev.start);
+      const key = C.ymd(d);
+      if (!map[key]) { map[key] = { key, date: d, items: [] }; groups.push(map[key]); }
       map[key].items.push(ev);
     });
 

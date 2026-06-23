@@ -33,20 +33,23 @@ async function buildTaskFields(body) {
   return fields;
 }
 
-async function ensureLists() {
+async function ensureLists(ownerId) {
   // Garantiza que las 3 columnas fijas existan siempre, sin tocar las extras del usuario
   for (const col of DEFAULT_COLUMNS) {
     const exists = await TaskList.findById(col._id).lean();
     if (!exists) await TaskList.create(col);
   }
-  return TaskList.find().sort({ position: 1 }).lean();
+  const defaultIds = DEFAULT_COLUMNS.map((col) => col._id);
+  return TaskList.find({
+    $or: [{ _id: { $in: defaultIds } }, { createdBy: ownerId }],
+  }).sort({ position: 1 }).lean();
 }
 
 export async function getTaskLists(req, res, next) {
   try {
     const manager = isTaskManager(req.user?.role);
     const ownerId = manager && req.query.userId ? req.query.userId : selfId(req.user);
-    const lists = await ensureLists();
+    const lists = await ensureLists(ownerId);
     const tasks = await Task.find({ createdBy: ownerId }).sort({ position: 1 }).lean();
     return res.json(lists.map((list) => ({
       id: list._id,
@@ -69,6 +72,7 @@ export async function createTaskList(req, res, next) {
       title: req.body.title,
       accent: req.body.accent || '#7257c9',
       position: count,
+      createdBy: selfId(req.user),
     });
     return res.status(201).json({ id: list._id, title: list.title, accent: list.accent, cards: [] });
   } catch (error) {
@@ -78,8 +82,16 @@ export async function createTaskList(req, res, next) {
 
 export async function deleteTaskList(req, res, next) {
   try {
-    const list = await TaskList.findByIdAndDelete(req.params.id);
+    const list = await TaskList.findById(req.params.id);
     if (!list) return res.status(404).json({ message: 'List not found' });
+
+    const isDefault = DEFAULT_COLUMNS.some((col) => col._id === list._id);
+    const manager = isTaskManager(req.user?.role);
+    if (isDefault || (!manager && list.createdBy !== selfId(req.user))) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    await list.deleteOne();
     await Task.deleteMany({ listId: req.params.id });
     return res.json(list);
   } catch (error) {

@@ -6,6 +6,7 @@ const taskListSchema = new Schema(
     title: { type: String, required: true },
     accent: { type: String, default: '#7257c9' },
     position: { type: Number, default: 0 },
+    createdBy: { type: String, default: '' },
   },
   { timestamps: true }
 );
