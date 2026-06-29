@@ -42,6 +42,8 @@
 }
 
 @media (max-width:560px){
-  .notif-pop{width:92vw;right:-4px;}
+  /* En mobile el ícono no está pegado al borde derecho: anclar el popover al
+     viewport (no al wrap) para que no quede a mitad fuera de la pantalla. */
+  .notif-pop{position:fixed;top:60px;left:12px;right:12px;width:auto;max-height:min(420px,70vh);}
   .toast-stack{left:12px;right:12px;bottom:calc(70px + env(safe-area-inset-bottom));max-width:none;}
 }

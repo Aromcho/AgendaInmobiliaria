@@ -56,24 +56,6 @@ import './Tareas.css';
   ];
   const ASSIGNED_COLOR = '#9d4edd'; // color fijo para tareas que te asignó otra persona
 
-  // ---------- Avatar genérico a partir de un nombre (para "asignado por") ----------
-  function initialsOf(name) {
-    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    if (!parts.length) return '?';
-    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
-  }
-  function colorOf(name) {
-    const s = String(name || '');
-    let hash = 0;
-    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
-    return TASK_COLORS[hash % TASK_COLORS.length];
-  }
-  function NameAvatar({ name, size = 22 }) {
-    return e("span", {
-      className: "name-avatar", title: `Asignada por ${name}`,
-      style: { width: size, height: size, background: colorOf(name), fontSize: size * 0.4 },
-    }, initialsOf(name));
-  }
   function ColorPicker({ value, onPick, onClose }) {
     const ref = useRef(null);
     useEffect(() => {
@@ -237,7 +219,10 @@ import './Tareas.css';
       card.tag ? e("span", { className: "tc-tag", style: t ? { color: t.ink, background: t.bg } : null },
         Ico ? e(Ico, { width: 12, height: 12 }) : null, card.tag) : null,
       e("p", { className: "tc-text" },
-        assignedByOther ? e(NameAvatar, { name: card.assignedByName, size: 19 }) : null,
+        assignedByOther ? e("span", {
+          style: { display: "inline-flex", verticalAlign: "middle", marginRight: 6 },
+          title: `Asignada por ${card.assignedByName}`,
+        }, e(Avatar, { agent: { email: card.assignedByEmail, name: card.assignedByName }, size: 19 })) : null,
         card.emoji ? e("span", { className: "tc-emoji-ico" }, card.emoji) : null,
         card.title),
       card.description ? e("p", { className: "tc-desc" }, card.description) : null,
@@ -246,18 +231,18 @@ import './Tareas.css';
         card.due ? e("span", { className: "tc-due " + ds },
           ds ? e("span", { className: "due-dot " + ds }) : e(I.Clock, { width: 13, height: 13 }),
           fmtDue(card.due)) : e("span", null),
-        ag ? e(Avatar, { agent: ag, size: 24 }) : null,
+        ag ? e(Avatar, { agent: ag, size: 27 }) : null,
       ),
       e("div", { className: "tc-actions", onClick: (ev) => ev.stopPropagation() },
         e("button", { className: "tc-act", title: "Emoji de la tarjeta", onClick: () => setOpenPicker((o) => (o === "emoji" ? null : "emoji")) },
-          card.emoji ? e("span", { className: "tc-emoji-mini" }, card.emoji) : e(I.Plus, { width: 12, height: 12 })),
+          card.emoji ? e("span", { className: "tc-emoji-mini" }, card.emoji) : e(I.Plus, { width: 15, height: 15 })),
         e("button", { className: "tc-act", title: "Color de la tarjeta", onClick: () => setOpenPicker((o) => (o === "color" ? null : "color")) },
           e("span", { className: "tc-color-dot", style: { background: ac } })),
         e("button", { className: "tc-act", title: "Foto de la tarjeta", onClick: () => fileRef.current && fileRef.current.click() },
-          e(I.Camera, { width: 13, height: 13 })),
+          e(I.Camera, { width: 16, height: 16 })),
         e("input", { ref: fileRef, type: "file", accept: "image/*", style: { display: "none" }, onChange: onPickImage }),
-        e("button", { className: "tc-act", title: "Editar", onClick: () => onEditCard(listId, card) }, e(I.Edit, { width: 13, height: 13 })),
-        e("button", { className: "tc-act danger", title: "Eliminar", onClick: () => onDelCard(listId, card.id) }, e(I.Close, { width: 13, height: 13 })),
+        e("button", { className: "tc-act", title: "Editar", onClick: () => onEditCard(listId, card) }, e(I.Edit, { width: 16, height: 16 })),
+        e("button", { className: "tc-act danger", title: "Eliminar", onClick: () => onDelCard(listId, card.id) }, e(I.Close, { width: 16, height: 16 })),
       ),
       openPicker === "color" ? e(ColorPicker, {
         value: card.color || "",

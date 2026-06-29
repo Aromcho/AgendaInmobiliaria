@@ -124,6 +124,7 @@ export async function createTask(req, res, next) {
       createdByName: ownerName,
       assignedBy: assignedByOther ? selfId(req.user) : '',
       assignedByName: assignedByOther ? (req.user?.name || '') : '',
+      assignedByEmail: assignedByOther ? (req.user?.email || '') : '',
     });
 
     if (manager && ownerId !== selfId(req.user)) {

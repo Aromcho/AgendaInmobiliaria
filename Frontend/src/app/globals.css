@@ -21,6 +21,14 @@ input,select,textarea{font-family:inherit;}
 ::selection{background:var(--mint-200);}
 #root{height:100%;}
 
+/* Scroll sutil acorde al diseño, en vez de la barra nativa gruesa del sistema */
+*{scrollbar-width:thin;scrollbar-color:var(--mint-200) transparent;}
+*::-webkit-scrollbar{width:8px;height:8px;}
+*::-webkit-scrollbar-track{background:transparent;}
+*::-webkit-scrollbar-thumb{background-color:var(--mint-200);border-radius:999px;}
+*::-webkit-scrollbar-thumb:hover{background-color:var(--mint-400);}
+*::-webkit-scrollbar-corner{background:transparent;}
+
 /* Animaciones compartidas */
 @keyframes drift{from{transform:scale(1.04) translate(0,0)}to{transform:scale(1.09) translate(-1%,1%)}}
 @keyframes drift-acceso{from{transform:scale(1.06) translate(0,0)}to{transform:scale(1.12) translate(-1.4%,1.2%)}}

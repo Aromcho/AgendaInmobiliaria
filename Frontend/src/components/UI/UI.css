@@ -148,10 +148,20 @@
   .new-btn span{display:none;}
   .new-btn{padding:10px 12px;}
 
-  /* Barra de pestañas: nav inferior de ancho completo, estilo app mobile */
-  .tabbar{position:fixed;left:0;right:0;bottom:0;transform:none;border-radius:0;
-    padding:6px 2px;box-shadow:0 -4px 20px rgba(8,30,22,.18);justify-content:space-around;
-    padding-bottom:calc(6px + env(safe-area-inset-bottom));}
-  .tab{flex:1;flex-direction:column;gap:2px;padding:7px 2px;border-radius:12px;font-size:10.5px;}
+  /* Barra de pestañas: tarjeta flotante con vidrio esmerilado, estilo app mobile premium */
+  .tabbar{position:fixed;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));
+    transform:none;border-radius:26px;padding:7px 5px;justify-content:space-around;align-items:center;
+    background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);
+    border:1px solid rgba(255,255,255,.6);
+    box-shadow:0 18px 40px rgba(8,30,22,.24),0 2px 8px rgba(8,30,22,.08);}
+  .tab{flex:1;flex-direction:column;gap:2px;padding:7px 2px;border-radius:15px;font-size:10.5px;}
   .tab span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .tab.active{box-shadow:0 6px 14px rgba(21,120,79,.35);}
+
+  /* Botón "+" central, apenas elevado sobre la barra */
+  .tab-fab{flex:0 0 auto;width:44px;height:44px;margin-top:-9px;border-radius:50%;
+    background:linear-gradient(160deg,var(--green-600),var(--green-800));color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 16px rgba(21,120,79,.4),0 0 0 4px rgba(255,255,255,.85);transition:.12s;}
+  .tab-fab:active{transform:scale(.94);box-shadow:0 5px 10px rgba(21,120,79,.38),0 0 0 4px rgba(255,255,255,.85);}
 }

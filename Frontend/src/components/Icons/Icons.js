@@ -48,6 +48,7 @@ import React from 'react';
     SignPost: (p) => S(p, [e("path",{key:1,d:"M12 3v18"}), e("path",{key:2,d:"M6 6h11l2.5 2.5L17 11H6z"}), e("path",{key:3,d:"M8 14h9"})]),
     FileText: (p) => S(p, [e("path",{key:1,d:"M6 3h8l4 4v14a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z"}), e("path",{key:2,d:"M14 3v5h5"}), e("path",{key:3,d:"M9 13h6M9 17h6"})]),
     Inbox: (p) => S(p, [e("path",{key:1,d:"M4 13l2.5-7h11L20 13"}), e("path",{key:2,d:"M4 13v5a1 1 0 001 1h14a1 1 0 001-1v-5h-5a2 2 0 01-4 0H4z"})]),
+    LogOut: (p) => S(p, [e("path",{key:1,d:"M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"}), e("path",{key:2,d:"M16 17l5-5-5-5"}), e("path",{key:3,d:"M21 12H9"})]),
   };
 
   export default Icons;

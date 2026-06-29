@@ -27,6 +27,7 @@ const taskSchema = new Schema(
     createdByName: { type: String, default: '' },
     assignedBy: { type: String, default: '' },
     assignedByName: { type: String, default: '' },
+    assignedByEmail: { type: String, default: '' },
   },
   { timestamps: true }
 );

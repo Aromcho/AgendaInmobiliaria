@@ -88,9 +88,13 @@ import './Views.css';
   // ============ Vista MES (y grilla compacta para multi-mes) ============
   function MonthGrid({ cursor, events, onOpen, onNew, goDay, compact }) {
     const first = C.startOfMonth(cursor);
-    const gridStart = C.startOfWeek(first);
+    let gridStart = C.startOfWeek(first);
+    const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    const leadingOffset = C.dayDiff(gridStart, first);
+    const weeksNeeded = Math.ceil((leadingOffset + daysInMonth) / 7);
+    if (weeksNeeded > 5) gridStart = C.addDays(gridStart, 7); // mes necesita 6 semanas: se corta la primera
     const weeks = [];
-    for (let w = 0; w < 6; w++) weeks.push(C.addDays(gridStart, w * 7));
+    for (let w = 0; w < 5; w++) weeks.push(C.addDays(gridStart, w * 7));
     const MAX = compact ? 1 : 3;
     const HEAD_H = compact ? 16 : 30;
     const LANE_H = compact ? 15 : 23;
@@ -401,78 +405,35 @@ import './Views.css';
     );
   }
 
-  // ============ Mes compacto mobile: solo número + puntos de color, se toca para elegir día ============
-  function MobileMonth({ cursor, events, selectedDay, onDayTap }) {
-    const first = C.startOfMonth(cursor);
-    const gridStart = C.startOfWeek(first);
-    const cells = [];
-    for (let i = 0; i < 42; i++) cells.push(C.addDays(gridStart, i));
-    return e("div", { className: "mob-month" },
-      e("div", { className: "month-dow" },
-        C.DAYS_SHORT.map((d) => e("div", { key: d, className: "mdow" }, d[0]))),
-      e("div", { className: "mob-month-grid" },
-        cells.map((day, i) => {
-          const inMonth = C.isSameMonth(day, first);
-          const isToday = C.isSameDay(day, C.TODAY);
-          const isSel = selectedDay && C.isSameDay(day, selectedDay);
-          const dayEvs = events.filter((ev) => {
+  // ============ Tira de días mobile: semana horizontal + indicador del día elegido ============
+  function MobileWeekStrip({ selectedDay, events, onDayTap, onPrevWeek, onNextWeek }) {
+    const ws = C.startOfWeek(selectedDay);
+    const days = [];
+    for (let i = 0; i < 7; i++) days.push(C.addDays(ws, i));
+    return e("div", { className: "mob-week-strip" },
+      e("button", { className: "mob-week-nav", onClick: onPrevWeek }, e(I.ChevronLeft, { width: 15, height: 15 })),
+      e("div", { className: "mob-week-days" },
+        days.map((d, i) => {
+          const isToday = C.isSameDay(d, C.TODAY);
+          const isSel = C.isSameDay(d, selectedDay);
+          const hasEvs = events.some((ev) => {
             const [s, e2] = eventDayRange(ev);
-            return day >= s && day <= e2;
+            return d >= s && d <= e2;
           });
           return e("button", {
             key: i, type: "button",
-            className: "mob-day" + (inMonth ? "" : " out") + (isSel ? " sel" : ""),
-            onClick: () => onDayTap(day),
+            className: "mob-week-day" + (isSel ? " sel" : "") + (isToday && !isSel ? " today" : ""),
+            onClick: () => onDayTap(d),
           },
-            e("span", { className: "mob-day-num" + (isToday ? " today" : "") }, day.getDate()),
-            dayEvs.length ? e("span", { className: "mob-day-dots" },
-              dayEvs.slice(0, 3).map((ev, di) => e("span", {
-                key: di, className: "mob-dot", style: { background: C.EVENT_TYPES[ev.type].color },
-              }))) : null,
+            e("span", { className: "mwd-dow" }, C.DAYS_SHORT[i]),
+            e("span", { className: "mwd-num" }, d.getDate()),
+            hasEvs ? e("span", { className: "mwd-dot" }) : null,
           );
         }),
       ),
+      e("button", { className: "mob-week-nav", onClick: onNextWeek }, e(I.Chevron, { width: 15, height: 15 })),
     );
   }
 
-  // ============ Tarjeta "día seleccionado" (mobile, debajo del mes) ============
-  function DayEventList({ day, events, onOpen }) {
-    const dayEvs = events.filter((ev) => {
-      const [s, e2] = eventDayRange(ev);
-      return day >= s && day <= e2;
-    }).slice().sort((a, b) => C.parse(a.start) - C.parse(b.start) || (a.allDay ? -1 : 1));
-
-    return e("div", { className: "day-card" },
-      e("div", { className: "day-card-head" },
-        e("span", { className: "day-card-date" }, `${C.DAYS[(day.getDay()+6)%7]} ${day.getDate()}`),
-        e("span", { className: "day-card-count" }, `${dayEvs.length} evento${dayEvs.length === 1 ? "" : "s"}`),
-      ),
-      dayEvs.length
-        ? e("div", { className: "ag-items" },
-            dayEvs.map((ev) => {
-              const t = C.EVENT_TYPES[ev.type]; const ag = C.agentById(ev.agentId);
-              const Ico = TYPE_ICON[ev.type]; const st = C.STATUS[ev.status];
-              const multi = ev.allDay && C.dayDiff(ev.start, ev.end) >= 1;
-              const due = C.eventDueState(ev);
-              return e("button", { key: ev.id, className: "ag-item" + (due ? ` due-${due}` : ""), onClick: () => onOpen(ev) },
-                e("span", { className: "ag-time" },
-                  due ? e("span", { className: "due-dot " + due }) : null,
-                  ev.allDay ? (multi ? `${C.nights(ev)} noches` : "Todo el día") : C.fmtTime(ev.start)),
-                e("span", { className: "ag-bar", style: { background: t.color } }),
-                e("span", { className: "ag-ico", style: { color: t.color, background: t.bg } }, e(Ico, { width: 14, height: 14 })),
-                e("div", { className: "ag-main" },
-                  e("div", { className: "ag-title" }, ev.title,
-                    e("span", { className: "ag-type-tag", style: { color: t.ink, background: t.bg } }, t.short)),
-                  ev.client ? e("div", { className: "ag-sub" }, e("span", null, ev.client.name)) : null,
-                ),
-                st ? e("span", { className: "status-badge", style: { color: st.color, background: st.bg } }, st.label) : null,
-                ag ? e(Avatar, { agent: ag, size: 24 }) : null,
-              );
-            }),
-          )
-        : e("div", { className: "day-card-empty" }, "Sin eventos este día."),
-    );
-  }
-
-  export { MonthView, MultiMonthView, WeekView, DayView, AgendaView, DayEventList, MobileMonth };
+  export { MonthView, MultiMonthView, WeekView, DayView, AgendaView, MobileWeekStrip };
 

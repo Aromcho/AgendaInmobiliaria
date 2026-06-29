@@ -375,11 +375,18 @@ import './UI.css';
     { key: "agenda", label: "Agenda", icon: I.List },
   ];
   const ADMIN_TAB = { key: "usuarios", label: "Usuarios", icon: I.User };
-  function TabBar({ tab, setTab, isSuperAdmin }) {
+  function TabBar({ tab, setTab, isSuperAdmin, isMobile, onNew }) {
     const tabs = isSuperAdmin ? [...TABS, ADMIN_TAB] : TABS;
+    const renderTab = (t) => e("button", { key: t.key, className: "tab" + (tab === t.key ? " active" : ""), onClick: () => setTab(t.key) },
+      e(t.icon, { width: 17, height: 17 }), e("span", null, t.label));
+    if (!isMobile || !onNew) {
+      return e("nav", { className: "tabbar" }, tabs.map(renderTab));
+    }
+    const mid = Math.ceil(tabs.length / 2);
     return e("nav", { className: "tabbar" },
-      tabs.map((t) => e("button", { key: t.key, className: "tab" + (tab === t.key ? " active" : ""), onClick: () => setTab(t.key) },
-        e(t.icon, { width: 17, height: 17 }), e("span", null, t.label))),
+      tabs.slice(0, mid).map(renderTab),
+      e("button", { className: "tab-fab", onClick: onNew, title: "Nuevo" }, e(I.Plus, { width: 24, height: 24, strokeWidth: 2.5 })),
+      tabs.slice(mid).map(renderTab),
     );
   }
 

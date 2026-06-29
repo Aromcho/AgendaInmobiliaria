@@ -20,7 +20,7 @@ const { useState, useMemo, useEffect, useCallback } = React;
 const C = CAL;
 const I = Icons;
 const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar, ProfileAvatar } = UI;
-const { MonthView, MultiMonthView, WeekView, DayView, AgendaView, DayEventList, MobileMonth } = Views;
+const { MonthView, MultiMonthView, WeekView, DayView, AgendaView, MobileWeekStrip } = Views;
 const MONTHS_BY_VIEW = { quarter: 3, half: 6, year: 12 };
 const { EventDetail, EventForm, OverdueModal } = Modals;
 const { Board, TaskForm } = TareasNS;
@@ -302,12 +302,18 @@ function App({ onLogout, session }) {
       query, setQuery, typeFilter, toggleType, agentFilter, toggleAgent, counts });
     const props = { cursor, events: visible, onOpen: setDetail, onNew: openNew };
     if (isMobile) {
-      content = e(React.Fragment, null,
-        e("div", { className: "view-card mobile-month-card" },
-          e(MobileDateNav, { title: calTitle, onPrev, onNext, onToday }),
-          e(MobileMonth, { cursor, events: visible, selectedDay: mobileDay, onDayTap: setMobileDay })),
-        e("div", { className: "view-card day-card-wrap" },
-          e(DayEventList, { day: mobileDay, events: visible, onOpen: setDetail })),
+      const mobileDayTitle = `${C.DAYS[(mobileDay.getDay()+6)%7]} ${mobileDay.getDate()} de ${C.MONTHS[mobileDay.getMonth()]}`;
+      content = e("div", { className: "view-card" },
+        e("div", { className: "mob-day-header" },
+          e("span", { className: "mob-day-header-title" }, mobileDayTitle),
+          e("button", { className: "mob-cal-today", onClick: () => setMobileDay(C.TODAY) }, "Hoy"),
+        ),
+        e(MobileWeekStrip, {
+          selectedDay: mobileDay, events: visible, onDayTap: setMobileDay,
+          onPrevWeek: () => setMobileDay((d) => C.addDays(d, -7)),
+          onNextWeek: () => setMobileDay((d) => C.addDays(d, 7)),
+        }),
+        e(DayView, { cursor: mobileDay, events: visible, onOpen: setDetail, onNew: openNew }),
       );
       mobileFab = () => openNew(mobileDay);
     } else {
@@ -378,12 +384,13 @@ function App({ onLogout, session }) {
           e(ProfileAvatar, { email: session?.email, name: session?.name, size: 34 }),
           e("span", { className: "profile-mini-name" }, session?.name),
         ),
-        e("button", { className: "today-btn" + (isMobile ? " sm" : ""), onClick: handleLogout, title: "Cerrar sesión" }, "Salir"),
+        isMobile
+          ? e("button", { className: "icon-btn", onClick: handleLogout, title: "Cerrar sesión" }, e(I.LogOut, { width: 17, height: 17 }))
+          : e("button", { className: "today-btn", onClick: handleLogout, title: "Cerrar sesión" }, "Salir"),
       ),
       e("div", { className: "shell-main", "data-tab": tab }, content),
-      mobileFab ? e("button", { className: "mobile-fab", onClick: mobileFab, title: "Nuevo" }, e(I.Plus, { width: 22, height: 22 })) : null,
     ),
-    e(TabBar, { tab, setTab, isSuperAdmin }),
+    e(TabBar, { tab, setTab, isSuperAdmin, isMobile, onNew: mobileFab || (() => openNew()) }),
     detail ? e(EventDetail, { ev: detail, onClose: () => setDetail(null), onEdit, onDelete }) : null,
     form ? e(EventForm, { initial: form.initial, onClose: () => setForm(null), onSave }) : null,
     taskForm ? e(TaskForm, {
