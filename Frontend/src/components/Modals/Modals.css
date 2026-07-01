@@ -28,6 +28,25 @@
 .detail-actions{display:flex;align-items:center;gap:8px;padding:15px 20px;background:var(--mint-50);border-top:1px solid var(--line);}
 .detail-actions .spacer{flex:1;}
 
+/* Emoji grande en el header del detalle (degradé de color) */
+.cd-top-emoji{position:relative;z-index:1;font-size:34px;line-height:1;}
+
+/* Título editable con click, dentro del header del detalle */
+.cd-title{cursor:pointer;display:flex;align-items:center;gap:9px;}
+.cd-title-edit{opacity:.3;flex-shrink:0;transition:opacity .12s;}
+.cd-title:hover .cd-title-edit{opacity:.8;}
+.cd-title-input{border:none;border-bottom:2px solid var(--green-500);outline:none;width:100%;
+  font-family:inherit;background:transparent;padding:0 0 2px;}
+
+/* Chip editable con click (EditableField): mismo lenguaje visual que .detail-chip, con modo edición */
+.cd-chip{cursor:default;}
+.cd-chip .dc-text{cursor:pointer;}
+.cd-chip.editing{box-shadow:0 0 0 2px var(--green-500) inset;background:#fff;}
+.cd-chip input,.cd-chip select,.cd-chip textarea{border:none;background:transparent;outline:none;font-family:inherit;
+  font-size:14px;font-weight:700;color:var(--ink);width:100%;padding:0;resize:vertical;}
+.cd-chip textarea{line-height:1.4;font-weight:500;font-size:13px;}
+.cd-placeholder{color:var(--ink-3);font-weight:600;font-style:italic;}
+
 /* Formulario de evento */
 .form{--form-accent:var(--green-500);width:560px;max-width:100%;max-height:90vh;background:var(--surface);
   border-radius:20px;overflow:hidden;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;

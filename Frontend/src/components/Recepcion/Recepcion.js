@@ -7,14 +7,16 @@ import './Recepcion.css';
 /* Vista Recepción de Propiedades */
 
   const e = React.createElement;
-  const { useState, useMemo } = React;
+  const { useState, useMemo, useEffect, useRef } = React;
   const R = RECEP;
   const I = Icons;
-  const { InfoChip, InfoCard } = UI;
+  const { EditableField, TitleField } = UI;
 
   const STEP_ICON = { tasacion: I.Clipboard, autorizacion: I.Check, cartel: I.SignPost, fotos: I.Camera, descripcion: I.FileText };
-  const STEP_EMOJI = { done: "✅", missing: "⚠️", partial: "⏳", na: "➖" };
   const STATUS_EMOJI = { negro: "✅", rojo: "⚠️", celeste: "🤔", pausa: "⏸️" };
+
+  // Un paso "cuenta" como completo si está hecho o no aplica a esta propiedad
+  function stepIsResolved(state) { return state === "done" || state === "na"; }
 
   // Oscurece un color hex un % dado, para el degradé del header (mismo lenguaje que el detalle de evento)
   function darken(hex, amt) {
@@ -143,100 +145,187 @@ import './Recepcion.css';
     );
   }
 
-  // ---------- Modal de detalle ----------
-  function StepRow({ stepKey, item }) {
+  const STEP_STATE_OPTIONS = [
+    { value: "missing", label: "Falta", short: "Falta" },
+    { value: "partial", label: "En proceso", short: "Proceso" },
+    { value: "done", label: "Hecho", short: "Hecho" },
+    { value: "na", label: "No aplica", short: "N/A" },
+  ];
+
+  // ---------- Selector de estado (chips clickeables, elección manual en cualquier momento) ----------
+  function StatusPicker({ value, onPick }) {
+    return e("div", { className: "status-picker" },
+      Object.values(R.STATUS).map((s) => e("button", {
+        key: s.key, type: "button", title: s.desc,
+        className: "sp-chip" + (value === s.key ? " on" : ""),
+        style: value === s.key ? { background: s.bg, borderColor: s.color, color: s.color } : null,
+        onClick: () => onPick(s.key),
+      }, e("span", { className: "sp-dot", style: { background: s.dot } }), s.label)),
+    );
+  }
+
+  // ---------- Modal de detalle: lectura linda + edición inline por campo (mismo lenguaje que Clientes) ----------
+  function StepEditRow({ stepKey, item, onSave }) {
     const s = R.STEPS.find((x) => x.key === stepKey);
-    const state = item.steps[stepKey];
-    const val = item[stepKey] || "";
     const Ico = STEP_ICON[stepKey];
-    const txt = { done: "Hecho", missing: "Falta", na: "No aplica", partial: "En proceso" }[state];
+    const state = item.steps[stepKey];
+    const text = item[stepKey] || "";
+    const [editing, setEditing] = useState(false);
+    const [val, setVal] = useState(text);
+    useEffect(() => { if (!editing) setVal(text); }, [text, editing]);
+
+    function commit() {
+      setEditing(false);
+      const v = val.trim();
+      if (v !== text) onSave({ [stepKey]: v });
+    }
+
     return e("div", { className: "rd-step " + state },
       e("span", { className: "rd-step-ico" }, e(Ico, { width: 16, height: 16 })),
       e("div", { className: "rd-step-main" },
         e("div", { className: "rd-step-top" },
           e("span", { className: "rd-step-label" }, s.label),
-          e("span", { className: "rd-step-state " + state }, STEP_EMOJI[state], " ", txt),
+          e("div", { className: "rsf-btns" },
+            STEP_STATE_OPTIONS.map((o) => e("button", {
+              key: o.value, type: "button", title: o.label,
+              className: "rsf-btn " + o.value + (state === o.value ? " on" : ""),
+              onClick: () => { if (o.value !== state) onSave({ steps: { ...item.steps, [stepKey]: o.value } }); },
+            }, o.short)),
+          ),
         ),
-        val ? e("div", { className: "rd-step-val" }, val) : null,
+        editing
+          ? e("input", {
+              className: "rd-step-input", autoFocus: true, value: val, placeholder: "Detalle opcional — ej. sí, Pablo",
+              onChange: (ev) => setVal(ev.target.value), onBlur: commit,
+              onKeyDown: (ev) => { if (ev.key === "Enter") { ev.preventDefault(); commit(); } if (ev.key === "Escape") { setVal(text); setEditing(false); } },
+            })
+          : e("div", { className: "rd-step-val" + (text ? "" : " empty"), onClick: () => setEditing(true) },
+              text || "+ agregar detalle"),
       ),
     );
   }
 
-  function RecepDetail({ item, onClose, onEdit, onDelete }) {
+  function RecepDetail({ item, onClose, onSave, onDelete }) {
+    const allStepsResolved = item ? R.STEPS.every((s) => stepIsResolved(item.steps[s.key])) : false;
+    // Al completar (o marcar N/A) todos los pasos, se sugiere "Todo OK" automáticamente,
+    // pero el estado siempre se puede cambiar a mano desde el selector de abajo.
+    const wasAllResolved = useRef(allStepsResolved);
+    useEffect(() => {
+      if (item && allStepsResolved && !wasAllResolved.current && item.status !== "negro") onSave({ status: "negro" });
+      wasAllResolved.current = allStepsResolved;
+    }, [allStepsResolved, item]);
+
     if (!item) return null;
     const st = R.STATUS[item.status];
     const pr = progress(item);
+    const tel = item.phone ? "tel:" + item.phone.replace(/\s/g, "") : null;
+
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
       e("div", { className: "recep-detail", onMouseDown: (e2) => e2.stopPropagation() },
         e("div", { className: "detail-top", style: { background: `linear-gradient(135deg, ${st.color}, ${darken(st.color, 0.35)})` } },
           e("span", { className: "detail-deco" }),
-          e("span", { className: "detail-type" }, STATUS_EMOJI[item.status] || "📌", " ", st.label),
+          e("span", { className: "cd-top-emoji" }, STATUS_EMOJI[item.status] || "📌"),
           e("button", { className: "detail-x", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
         ),
         e("div", { className: "detail-body" },
-          e("h2", { className: "detail-title" }, item.propiedad || "—",
-            e("span", { className: "d-chip" }, "N°" + item.num)),
+          e("div", { className: "rd-title-row" },
+            e(TitleField, { value: item.propiedad, placeholder: "Sin nombre", onSave: (v) => onSave({ propiedad: v }) }),
+            e("span", { className: "d-chip" }, "N°" + item.num),
+          ),
           e("div", { className: "detail-grid" },
-            e(InfoChip, {
+            e(EditableField, {
+              type: "select", label: "Responsable", value: item.responsable,
+              options: [{ value: "", label: "Sin asignar" }].concat(R.TEAM.map((t) => ({ value: t.name, label: t.name }))),
               icon: item.responsable ? e("span", { className: "rc-avatar", style: { background: item.respColor } }, item.respInit) : e(I.User, { width: 15, height: 15 }),
-              emoji: "🧑‍💼", label: "Responsable", value: item.responsable || "Sin asignar",
+              displayValue: item.responsable || "Sin asignar",
+              onSave: (v) => { const t = R.TEAM.find((x) => x.name === v); onSave({ responsable: v, respColor: t ? t.color : "#8a978f", respInit: t ? t.init : "·" }); },
             }),
-            e(InfoChip, { icon: e(I.Calendar, { width: 15, height: 15 }), emoji: "📅", label: "Ingreso", value: item.fecha }),
-            e(InfoChip, { icon: e(I.Coins, { width: 15, height: 15 }), emoji: "💰", label: "Valor", value: item.valor }),
+            e(EditableField, { label: "Ingreso", value: item.fecha, placeholder: "DD/MM", icon: e(I.Calendar, { width: 15, height: 15 }), onSave: (v) => onSave({ fecha: v }) }),
           ),
-          (item.owner || item.phone) ? e(InfoCard, {
-            icon: e(I.User, { width: 15, height: 15 }), emoji: "🙋", label: "Propietario", title: item.owner || "—",
-            sub: item.phone ? e("a", { className: "rd-phone", href: "tel:" + item.phone.replace(/\s/g, "") }, e(I.Phone, { width: 13, height: 13 }), item.phone) : null,
-          }) : null,
           e("div", { className: "detail-grid" },
-            e(InfoChip, { icon: e(I.Building, { width: 15, height: 15 }), emoji: "📐", label: "Superficie", value: item.superficie }),
-            e(InfoChip, { icon: e(I.Tag, { width: 15, height: 15 }), emoji: "🔖", label: "ID publicación", value: item.idPublicacion }),
+            e(EditableField, { label: "Valor", value: item.valor, placeholder: "Usd 100.000", icon: e(I.Coins, { width: 15, height: 15 }), onSave: (v) => onSave({ valor: v }) }),
+            e(EditableField, { label: "Superficie", value: item.superficie, placeholder: "Sup. cub. 86 m² - Lote 350 m²", icon: e(I.Building, { width: 15, height: 15 }), onSave: (v) => onSave({ superficie: v }) }),
           ),
-          item.notas ? e(InfoCard, {
-            icon: e(I.FileText, { width: 15, height: 15 }), emoji: "📝", label: "Notas", sub: item.notas,
-          }) : null,
+          e(EditableField, { label: "Propietario", value: item.owner, placeholder: "Nombre del dueño", full: true, icon: e(I.User, { width: 15, height: 15 }), onSave: (v) => onSave({ owner: v }) }),
+          e("div", { className: "detail-grid" },
+            e(EditableField, { type: "tel", label: "Teléfono", value: item.phone, placeholder: "+54 9 …", icon: e(I.Phone, { width: 15, height: 15 }), onSave: (v) => onSave({ phone: v }) }),
+            e(EditableField, { label: "ID publicación", value: item.idPublicacion, placeholder: "Nº interno / Tokko", icon: e(I.Tag, { width: 15, height: 15 }), onSave: (v) => onSave({ idPublicacion: v }) }),
+          ),
+          tel ? e("div", { className: "cd-contact-row" },
+            e("a", { className: "cl-cbtn call lg", href: tel }, e(I.Phone, { width: 14, height: 14 }), "Llamar")) : null,
+          e(EditableField, { label: "Link de publicación", value: item.link, placeholder: "https://…", full: true, icon: e(I.ExternalLink, { width: 15, height: 15 }), onSave: (v) => onSave({ link: v }) }),
+          e(EditableField, { type: "textarea", label: "Notas", value: item.notas, placeholder: "Observaciones, llaves, condiciones del dueño…", full: true, icon: e(I.FileText, { width: 15, height: 15 }), onSave: (v) => onSave({ notas: v }) }),
+          e("div", { className: "rd-status-block" },
+            e("span", { className: "rd-status-label" }, "Estado"),
+            e(StatusPicker, { value: item.status, onPick: (k) => onSave({ status: k }) }),
+          ),
           e("div", { className: "rd-steps-head" },
             e("span", null, "Estado de recepción"),
             e("span", { className: "rd-prog-pill", style: { color: st.color, background: st.bg } }, `${pr.done} de ${pr.total} pasos`),
           ),
-          e("div", { className: "rd-steps" }, R.STEPS.map((s) => e(StepRow, { key: s.key, stepKey: s.key, item }))),
+          e("div", { className: "rd-steps" }, R.STEPS.map((s) => e(StepEditRow, { key: s.key, stepKey: s.key, item, onSave }))),
           item.link ? e("a", { className: "rd-link", href: item.link, target: "_blank", rel: "noopener" },
             e(I.ExternalLink, { width: 16, height: 16 }), "Ver publicación online") : null,
         ),
         e("div", { className: "detail-actions" },
-          e("button", { className: "btn ghost danger", onClick: () => onDelete(item) }, e(I.Trash, { width: 16, height: 16 }), "Eliminar"),
+          e("button", { className: "btn ghost danger", onClick: () => { onDelete(item); onClose(); } }, e(I.Trash, { width: 16, height: 16 }), "Eliminar"),
           e("div", { className: "spacer" }),
           e("button", { className: "btn ghost", onClick: onClose }, "Cerrar"),
-          e("button", { className: "btn primary", onClick: () => onEdit(item) }, e(I.Edit, { width: 16, height: 16 }), "Editar"),
         ),
       ),
     );
   }
 
-  const STEP_STATE_OPTIONS = [
-    { value: "missing", label: "Falta" },
-    { value: "partial", label: "En proceso" },
-    { value: "done", label: "Hecho" },
-    { value: "na", label: "No aplica" },
-  ];
+  // ---------- Fila de paso editable (formulario de alta) ----------
+  function StepFormRow({ stepKey, step, onState, onText }) {
+    const s = R.STEPS.find((x) => x.key === stepKey);
+    const Ico = STEP_ICON[stepKey];
+    return e("div", { className: "rsf-card " + step.state },
+      e("div", { className: "rsf-top" },
+        e("span", { className: "rsf-ico" }, e(Ico, { width: 15, height: 15 })),
+        e("span", { className: "rsf-label" }, s.label),
+        e("div", { className: "rsf-btns" },
+          STEP_STATE_OPTIONS.map((o) => e("button", {
+            key: o.value, type: "button", title: o.label,
+            className: "rsf-btn " + o.value + (step.state === o.value ? " on" : ""),
+            onClick: () => onState(o.value),
+          }, o.short)),
+        ),
+      ),
+      e("input", {
+        className: "rsf-text", value: step.text, onChange: onText,
+        placeholder: "Detalle opcional — ej. sí, Pablo",
+      }),
+    );
+  }
 
-  // ---------- Formulario de propiedad (alta o edición) ----------
-  function RecepForm({ nextNum, initial, onClose, onSave }) {
-    const isEdit = !!initial;
+  // ---------- Formulario de alta de propiedad (la edición es inline en RecepDetail) ----------
+  function RecepForm({ nextNum, onClose, onSave }) {
     const [f, setF] = useState(() => ({
-      propiedad: initial?.propiedad || "", owner: initial?.owner || "", phone: initial?.phone || "",
-      fecha: initial?.fecha || "", valor: initial?.valor || "", link: initial?.link || "",
-      superficie: initial?.superficie || "", idPublicacion: initial?.idPublicacion || "", notas: initial?.notas || "",
-      responsable: initial?.responsable || "", status: initial?.status || "celeste",
-      steps: R.STEPS.reduce((o, s) => {
-        o[s.key] = { text: initial?.[s.key] || "", state: initial?.steps?.[s.key] || "missing" };
-        return o;
-      }, {}),
+      propiedad: "", owner: "", phone: "", fecha: "", valor: "", link: "",
+      superficie: "", idPublicacion: "", notas: "", responsable: "", status: "celeste",
+      steps: R.STEPS.reduce((o, s) => { o[s.key] = { text: "", state: "missing" }; return o; }, {}),
     }));
     const set = (k) => (ev) => setF((o) => ({ ...o, [k]: ev.target.value }));
-    const setStep = (key, field) => (ev) => setF((o) => ({
-      ...o, steps: { ...o.steps, [key]: { ...o.steps[key], [field]: ev.target.value } },
+    const setStepText = (key) => (ev) => setF((o) => ({
+      ...o, steps: { ...o.steps, [key]: { ...o.steps[key], text: ev.target.value } },
     }));
+    const setStepState = (key) => (val) => setF((o) => ({
+      ...o, steps: { ...o.steps, [key]: { ...o.steps[key], state: val } },
+    }));
+
+    const stepsDone = R.STEPS.filter((s) => f.steps[s.key].state === "done").length;
+    const stepsTotal = R.STEPS.filter((s) => f.steps[s.key].state !== "na").length;
+    const allStepsResolved = R.STEPS.every((s) => stepIsResolved(f.steps[s.key].state));
+    // Al completar (o marcar N/A) todos los pasos, se sugiere "Todo OK" automáticamente,
+    // pero el estado siempre se puede elegir a mano desde el selector de abajo.
+    const wasAllResolved = useRef(allStepsResolved);
+    useEffect(() => {
+      if (allStepsResolved && !wasAllResolved.current) {
+        setF((o) => (o.status === "negro" ? o : { ...o, status: "negro" }));
+      }
+      wasAllResolved.current = allStepsResolved;
+    }, [allStepsResolved]);
 
     function save() {
       if (!f.propiedad.trim()) return;
@@ -244,7 +333,7 @@ import './Recepcion.css';
       const stepTexts = {}; const stepStates = {};
       R.STEPS.forEach((s) => { stepTexts[s.key] = f.steps[s.key].text.trim(); stepStates[s.key] = f.steps[s.key].state; });
       onSave({
-        num: isEdit ? initial.num : nextNum,
+        num: nextNum,
         propiedad: f.propiedad.trim(),
         owner: f.owner.trim(),
         phone: f.phone.trim(),
@@ -255,20 +344,19 @@ import './Recepcion.css';
         idPublicacion: f.idPublicacion.trim(),
         notas: f.notas.trim(),
         responsable: f.responsable,
-        respColor: team ? team.color : (initial?.respColor || "#8a978f"),
-        respInit: team ? team.init : (initial?.respInit || "·"),
+        respColor: team ? team.color : "#8a978f",
+        respInit: team ? team.init : "·",
         status: f.status,
-        flags: initial?.flags || [],
+        flags: [],
         ...stepTexts,
         steps: stepStates,
       });
     }
 
-    const curStatus = R.STATUS[f.status];
     return e("div", { className: "modal-scrim", onMouseDown: onClose },
-      e("div", { className: "form", style: { "--form-accent": curStatus.color }, onMouseDown: (e2) => e2.stopPropagation() },
+      e("div", { className: "form", onMouseDown: (e2) => e2.stopPropagation() },
         e("div", { className: "form-head" },
-          e("h2", null, isEdit ? `Editar N°${initial.num}` : "Nueva propiedad"),
+          e("h2", null, "Nueva propiedad 🏠"),
           e("button", { className: "detail-x dark", onClick: onClose }, e(I.Close, { width: 18, height: 18 })),
         ),
         e("div", { className: "form-body" },
@@ -288,19 +376,11 @@ import './Recepcion.css';
             e("div", { className: "fg" }, e("label", null, "Fecha de ingreso"),
               e("input", { value: f.fecha, onChange: set("fecha"), placeholder: "DD/MM" })),
           ),
-          e("div", { className: "fg-row" },
-            e("div", { className: "fg" },
-              e("label", null, "Responsable"),
-              e("select", { value: f.responsable, onChange: set("responsable") },
-                e("option", { value: "" }, "Sin asignar"),
-                R.TEAM.map((t) => e("option", { key: t.name, value: t.name }, t.name)),
-              ),
-            ),
-            e("div", { className: "fg" },
-              e("label", null, "Estado"),
-              e("select", { value: f.status, onChange: set("status") },
-                Object.values(R.STATUS).map((s) => e("option", { key: s.key, value: s.key }, s.label)),
-              ),
+          e("div", { className: "fg" },
+            e("label", null, "Responsable"),
+            e("select", { value: f.responsable, onChange: set("responsable") },
+              e("option", { value: "" }, "Sin asignar"),
+              R.TEAM.map((t) => e("option", { key: t.name, value: t.name }, t.name)),
             ),
           ),
           e("div", { className: "fg-row" },
@@ -318,21 +398,25 @@ import './Recepcion.css';
             e("textarea", { value: f.notas, onChange: set("notas"), rows: 3, placeholder: "Observaciones, llaves, condiciones del dueño…" }),
           ),
           e("div", { className: "fg" },
-            e("label", null, "Estado de la recepción"),
+            e("label", null, "Estado"),
+            e(StatusPicker, { value: f.status, onPick: (k) => setF((o) => ({ ...o, status: k })) }),
+          ),
+          e("div", { className: "fg" },
+            e("div", { className: "rd-steps-head" },
+              e("label", null, "Estado de la recepción"),
+              e("span", { className: "rd-prog-pill" }, `${stepsDone} de ${stepsTotal} pasos`),
+            ),
             e("div", { className: "recep-steps-form" },
-              R.STEPS.map((s) => e("div", { key: s.key, className: "rsf-row" },
-                e("span", { className: "rsf-label" }, s.label),
-                e("input", { className: "rsf-text", value: f.steps[s.key].text, onChange: setStep(s.key, "text"), placeholder: "Ej. sí, Pablo" }),
-                e("select", { className: "rsf-state", value: f.steps[s.key].state, onChange: setStep(s.key, "state") },
-                  STEP_STATE_OPTIONS.map((o) => e("option", { key: o.value, value: o.value }, o.label)),
-                ),
-              )),
+              R.STEPS.map((s) => e(StepFormRow, {
+                key: s.key, stepKey: s.key, step: f.steps[s.key],
+                onState: setStepState(s.key), onText: setStepText(s.key),
+              })),
             ),
           ),
         ),
         e("div", { className: "form-actions" },
           e("button", { className: "btn ghost", onClick: onClose }, "Cancelar"),
-          e("button", { className: "btn primary", onClick: save }, e(I.Check, { width: 16, height: 16 }), isEdit ? "Guardar cambios" : "Crear propiedad"),
+          e("button", { className: "btn primary", onClick: save }, e(I.Check, { width: 16, height: 16 }), "Crear propiedad"),
         ),
       ),
     );

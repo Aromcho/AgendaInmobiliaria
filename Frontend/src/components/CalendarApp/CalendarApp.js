@@ -9,6 +9,7 @@ import * as Views from '../Views/Views';
 import * as Modals from '../Modals/Modals';
 import * as TareasNS from '../Tareas/Tareas';
 import * as RecepNS from '../Recepcion/Recepcion';
+import * as ClientesNS from '../Clientes/Clientes';
 import { UsuariosView } from '../Users/Users';
 import { NotificationBell } from '../Notifications/Notifications';
 import './CalendarApp.css';
@@ -19,14 +20,15 @@ const e = React.createElement;
 const { useState, useMemo, useEffect, useCallback } = React;
 const C = CAL;
 const I = Icons;
-const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar, ProfileAvatar } = UI;
+const { CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, ClientesToolbar, TabBar, ProfileAvatar } = UI;
 const { MonthView, MultiMonthView, WeekView, DayView, AgendaView, MobileWeekStrip } = Views;
 const MONTHS_BY_VIEW = { quarter: 3, half: 6, year: 12 };
 const { EventDetail, EventForm, OverdueModal } = Modals;
 const { Board, TaskForm } = TareasNS;
 const { RecepView, RecepDetail, RecepForm } = RecepNS;
+const { ClientesView, ClientDetail, ClientForm } = ClientesNS;
 
-const MOBILE_TITLES = { calendario: "Calendario", tareas: "Tareas del equipo", recepcion: "Recepción", agenda: "Agenda", usuarios: "Usuarios" };
+const MOBILE_TITLES = { calendario: "Calendario", tareas: "Tareas del equipo", recepcion: "Recepción", clientes: "Clientes", agenda: "Agenda", usuarios: "Usuarios" };
 
 function initFilter(keys) { const o = {}; keys.forEach((k) => (o[k] = true)); return o; }
 
@@ -55,6 +57,10 @@ function App({ onLogout, session }) {
   const [teamUsers, setTeamUsers] = useState([]);
   const [taskForm, setTaskForm] = useState(null);     // { listId, card } al editar una tarjeta
   const [reception, setReception] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [clientAgent, setClientAgent] = useState("__all");
+  const [clientForm, setClientForm] = useState(null);     // null cerrado; {} abierto (alta)
+  const [clientDetail, setClientDetail] = useState(null); // cliente seleccionado (detalle + edición inline)
   const [typeFilter, setTypeFilter] = useState(() => initFilter(Object.keys(C.EVENT_TYPES)));
   const [agentFilter, setAgentFilter] = useState(() => initFilter(C.AGENTS.map((a) => a.id)));
   const [query, setQuery] = useState("");
@@ -65,7 +71,7 @@ function App({ onLogout, session }) {
   const [recepStatus, setRecepStatus] = useState(() => initFilter(Object.keys(RECEP.STATUS)));
   const [recepResp, setRecepResp] = useState("__all");
   const [recepDetail, setRecepDetail] = useState(null);
-  const [recepForm, setRecepForm] = useState(null); // null cerrado; { initial } abierto (initial=null si es alta)
+  const [recepForm, setRecepForm] = useState(false); // alta de propiedad (la edición es inline en RecepDetail)
   const toggleStatus = (k) => setRecepStatus((o) => ({ ...o, [k]: !o[k] }));
 
   const toggleType = (k) => setTypeFilter((o) => ({ ...o, [k]: !o[k] }));
@@ -130,6 +136,16 @@ function App({ onLogout, session }) {
     fetchCollection('reception').then((remote) => {
       if (!active || !remote) return;
       setReception(remote.map((x) => ({ ...x, id: x.id || x._id })));
+    });
+    return () => { active = false; };
+  }, []);
+
+  // ---- carga inicial de seguimiento de clientes ----
+  useEffect(() => {
+    let active = true;
+    fetchCollection('clients').then((remote) => {
+      if (!active || !remote) return;
+      setClients(remote.map((x) => ({ ...x, id: x.id || x._id })));
     });
     return () => { active = false; };
   }, []);
@@ -276,16 +292,35 @@ function App({ onLogout, session }) {
     setReception((list) => [{ ...created, id: created.id || created._id }, ...list]);
     setRecepForm(null);
   };
-  const editReception = async (payload) => {
-    const updated = await updateResource('reception', payload.num, payload);
-    if (!updated) return;
-    setReception((list) => list.map((it) => (it.num === payload.num ? { ...it, ...updated, id: updated.id || updated._id } : it)));
-    setRecepForm(null);
+  // Actualización optimista (UI al instante) + persistencia en el backend, edición inline en RecepDetail
+  const patchReception = async (item, fields) => {
+    setReception((list) => list.map((it) => (it.num === item.num ? { ...it, ...fields } : it)));
+    setRecepDetail((d) => (d && d.num === item.num ? { ...d, ...fields } : d));
+    await updateResource('reception', item.num, fields);
   };
   const deleteReception = async (item) => {
     await deleteResource('reception', item.num);
     setReception((list) => list.filter((it) => it.num !== item.num));
     setRecepDetail(null);
+  };
+
+  // ---- seguimiento de clientes ----
+  const addClient = async (payload) => {
+    const created = await createResource('clients', payload);
+    if (!created) return;
+    setClients((list) => [{ ...created, id: created.id || created._id }, ...list]);
+    setClientForm(null);
+  };
+  // Actualización optimista (UI al instante) + persistencia en el backend
+  const patchClient = async (id, fields) => {
+    setClients((list) => list.map((it) => (it.id === id ? { ...it, ...fields } : it)));
+    setClientDetail((d) => (d && d.id === id ? { ...d, ...fields } : d));
+    await updateResource('clients', id, fields);
+  };
+  const deleteClient = async (item) => {
+    await deleteResource('clients', item.id);
+    setClients((list) => list.filter((it) => it.id !== item.id));
+    setClientDetail((d) => (d && d.id === item.id ? null : d));
   };
 
   const addTaskList = async (title) => {
@@ -334,7 +369,7 @@ function App({ onLogout, session }) {
       content = e("div", { className: "view-card agenda-card" }, e(AgendaView, { cursor, events: visible, onOpen: setDetail }));
     }
   } else if (tab === "recepcion") {
-    toolbar = e(RecepcionToolbar, { items: reception, query, setQuery, statusFilter: recepStatus, toggleStatus, respFilter: recepResp, setRespFilter: setRecepResp, onNew: () => setRecepForm({ initial: null }) });
+    toolbar = e(RecepcionToolbar, { items: reception, query, setQuery, statusFilter: recepStatus, toggleStatus, respFilter: recepResp, setRespFilter: setRecepResp, onNew: () => setRecepForm(true) });
     if (isMobile) {
       content = e("div", { className: "view-card recep-card" },
         e("div", { className: "mob-status-row" },
@@ -342,11 +377,24 @@ function App({ onLogout, session }) {
             key: s.key, className: "st-chip" + (recepStatus[s.key] ? "" : " off"), onClick: () => toggleStatus(s.key),
           }, e("span", { className: "st-chip-dot", style: { background: s.dot } }), s.label))),
         e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail, isMobile }));
-      mobileFab = () => setRecepForm({ initial: null });
+      mobileFab = () => setRecepForm(true);
     } else {
       content = e("div", { className: "view-card recep-card" },
         e(RecepView, { items: reception, query, statusFilter: recepStatus, respFilter: recepResp, onOpen: setRecepDetail, isMobile }));
     }
+  } else if (tab === "clientes") {
+    toolbar = e(ClientesToolbar, {
+      items: clients, query, setQuery, agentFilter: clientAgent, setAgentFilter: setClientAgent,
+    });
+    content = e("div", { className: "view-card clientes-card" },
+      e(ClientesView, {
+        items: clients, query, agentFilter: clientAgent,
+        onOpen: setClientDetail, onDelete: deleteClient,
+        onColor: (item, color) => patchClient(item.id, { color }),
+        onEmoji: (item, emoji) => patchClient(item.id, { emoji }),
+        onNew: () => setClientForm({}),
+      }));
+    if (isMobile) mobileFab = () => setClientForm({});
   } else if (tab === "usuarios") {
     toolbar = e("div", { className: "toolbar" },
       e("div", { className: "tb-left" }, e("h1", { className: "tb-title" }, "Usuarios")));
@@ -399,16 +447,25 @@ function App({ onLogout, session }) {
     }) : null,
     recepDetail ? e(RecepDetail, {
       item: recepDetail, onClose: () => setRecepDetail(null),
-      onEdit: (item) => { setRecepDetail(null); setRecepForm({ initial: item }); },
+      onSave: (fields) => patchReception(recepDetail, fields),
       onDelete: deleteReception,
     }) : null,
     recepForm ? e(RecepForm, {
       nextNum: reception.reduce((m, it) => Math.max(m, it.num || 0), 0) + 1,
-      initial: recepForm.initial,
-      onClose: () => setRecepForm(null),
-      onSave: recepForm.initial ? editReception : addReception,
+      onClose: () => setRecepForm(false),
+      onSave: addReception,
     }) : null,
-    (currentOverdue && !detail && !form && !taskForm && !recepDetail && !recepForm) ? e(OverdueModal, {
+    clientForm ? e(ClientForm, {
+      onClose: () => setClientForm(null),
+      onSave: addClient,
+    }) : null,
+    clientDetail ? e(ClientDetail, {
+      item: clientDetail,
+      onClose: () => setClientDetail(null),
+      onSave: (fields) => patchClient(clientDetail.id, fields),
+      onDelete: deleteClient,
+    }) : null,
+    (currentOverdue && !detail && !form && !taskForm && !recepDetail && !recepForm && !clientForm && !clientDetail) ? e(OverdueModal, {
       ev: currentOverdue, queuePos: 1, queueLen: overdueEvents.length,
       onClose: () => dismissOverdue(currentOverdue.id),
       onDone: onOverdueDone, onPostpone: onOverduePostpone,

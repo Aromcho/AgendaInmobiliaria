@@ -13,7 +13,8 @@ import './Views.css';
   const { Avatar, TypeDot, TYPE_ICON } = UI;
 
   const HOUR_START = 7, HOUR_END = 22, HOUR_H = 52;
-  const NOW_MIN = 11 * 60 + 20; // indicador "ahora" en la fecha de hoy
+  const nowDate = new Date();
+  const NOW_MIN = nowDate.getHours() * 60 + nowDate.getMinutes(); // indicador "ahora" en la fecha de hoy
 
   // ============ helpers de layout ============
   function eventDayRange(ev) {

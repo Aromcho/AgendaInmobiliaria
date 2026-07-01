@@ -11,7 +11,7 @@ import './Tareas.css';
   const { useState, useRef, useEffect } = React;
   const C = CAL;
   const I = Icons;
-  const { Avatar, TYPE_ICON, Confetti } = UI;
+  const { Avatar, TYPE_ICON, Confetti, ColorPicker, EmojiPicker, SWATCH_COLORS: TASK_COLORS, SWATCH_EMOJIS: TASK_EMOJIS } = UI;
 
   // ---------- Foto adjunta (se achica en el navegador antes de subir) ----------
   function resizeImageFile(file, maxW = 900, quality = 0.72) {
@@ -49,61 +49,7 @@ import './Tareas.css';
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
-  // ---------- Paleta de colores de tarjeta ----------
-  const TASK_COLORS = [
-    '#15784f', '#2563eb', '#b8791b', '#7257c9', '#0e8a8a',
-    '#d8504a', '#c2861a', '#0a5e5e', '#9d4edd', '#e85d75',
-  ];
   const ASSIGNED_COLOR = '#9d4edd'; // color fijo para tareas que te asignó otra persona
-
-  function ColorPicker({ value, onPick, onClose }) {
-    const ref = useRef(null);
-    useEffect(() => {
-      const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) onClose(); };
-      document.addEventListener("mousedown", h);
-      return () => document.removeEventListener("mousedown", h);
-    }, [onClose]);
-    return e("div", { className: "color-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
-      TASK_COLORS.map((c) => e("button", {
-        key: c, type: "button", title: "Elegir este color",
-        className: "color-swatch" + (value === c ? " on" : ""),
-        style: { background: c },
-        onClick: () => { onPick(c); onClose(); },
-      })),
-      e("button", {
-        type: "button", title: "Sin color personalizado",
-        className: "color-swatch clear" + (!value ? " on" : ""),
-        onClick: () => { onPick(""); onClose(); },
-      }, e(I.Close, { width: 11, height: 11 })),
-    );
-  }
-
-  // ---------- Paleta de emojis de tarjeta ----------
-  const TASK_EMOJIS = [
-    '🏠', '🏡', '🔑', '🏢', '📋', '✅', '📞', '💰', '📸', '📝',
-    '⏰', '🎯', '🚗', '📅', '🔥', '💡', '⭐', '🎉', '👍', '📦',
-    '🧹', '🛠️', '📌', '💬', '👀', '🏖️', '✈️', '🐾', '🍀', '☀️',
-  ];
-  function EmojiPicker({ value, onPick, onClose }) {
-    const ref = useRef(null);
-    useEffect(() => {
-      const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) onClose(); };
-      document.addEventListener("mousedown", h);
-      return () => document.removeEventListener("mousedown", h);
-    }, [onClose]);
-    return e("div", { className: "emoji-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
-      TASK_EMOJIS.map((em) => e("button", {
-        key: em, type: "button",
-        className: "emoji-swatch" + (value === em ? " on" : ""),
-        onClick: () => { onPick(em); onClose(); },
-      }, em)),
-      e("button", {
-        type: "button", title: "Sin emoji",
-        className: "emoji-swatch clear" + (!value ? " on" : ""),
-        onClick: () => { onPick(""); onClose(); },
-      }, e(I.Close, { width: 11, height: 11 })),
-    );
-  }
 
   function fmtDue(s) {
     if (!s) return null;

@@ -147,6 +147,76 @@ import './UI.css';
     );
   }
 
+  // ---------- Campo editable (click para editar, dentro de un modal de detalle) ----------
+  function EditableField({ icon, label, value, displayValue, placeholder, type = 'text', options, full, onSave }) {
+    const [editing, setEditing] = useState(false);
+    const [val, setVal] = useState(value || '');
+    useEffect(() => { if (!editing) setVal(value || ''); }, [value, editing]);
+
+    function commit(next) {
+      const v = next !== undefined ? next : val;
+      const trimmed = typeof v === 'string' ? v.trim() : v;
+      setEditing(false);
+      if (trimmed !== (value || '')) onSave(trimmed);
+    }
+    function cancel() { setVal(value || ''); setEditing(false); }
+
+    let control = null;
+    if (editing) {
+      if (type === 'select') {
+        control = e('select', { autoFocus: true, value: val, onChange: (ev) => commit(ev.target.value) },
+          options.map((o) => e('option', { key: o.value, value: o.value }, o.label)));
+      } else if (type === 'date') {
+        control = e('input', { type: 'date', autoFocus: true, value: val, onChange: (ev) => commit(ev.target.value) });
+      } else if (type === 'textarea') {
+        control = e('textarea', {
+          autoFocus: true, rows: 2, value: val, placeholder,
+          onChange: (ev) => setVal(ev.target.value), onBlur: () => commit(),
+          onKeyDown: (ev) => { if (ev.key === 'Escape') cancel(); },
+        });
+      } else {
+        control = e('input', {
+          type, autoFocus: true, value: val, placeholder,
+          onChange: (ev) => setVal(ev.target.value), onBlur: () => commit(),
+          onKeyDown: (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } if (ev.key === 'Escape') cancel(); },
+        });
+      }
+    }
+
+    return e('div', { className: 'detail-chip cd-chip' + (full ? ' full' : '') + (editing ? ' editing' : '') },
+      icon ? e('span', { className: 'dc-ico' }, icon) : null,
+      e('div', { className: 'dc-text', onClick: () => !editing && setEditing(true) },
+        label ? e('div', { className: 'dc-label' }, label) : null,
+        editing ? control : e('div', { className: 'dc-val' },
+          (displayValue || value) ? (displayValue || value) : e('span', { className: 'cd-placeholder' }, placeholder || 'Click para completar')),
+      ),
+      !editing ? e('span', { className: 'dc-emoji' }, '✏️') : null,
+    );
+  }
+
+  // ---------- Título editable (dentro del header de un modal de detalle) ----------
+  function TitleField({ value, placeholder, onSave }) {
+    const [editing, setEditing] = useState(false);
+    const [val, setVal] = useState(value || '');
+    useEffect(() => { if (!editing) setVal(value || ''); }, [value, editing]);
+
+    function commit() {
+      setEditing(false);
+      const v = val.trim();
+      if (v && v !== value) onSave(v);
+      else setVal(value || '');
+    }
+    if (editing) {
+      return e('input', {
+        className: 'detail-title cd-title-input', autoFocus: true, value: val,
+        onChange: (ev) => setVal(ev.target.value), onBlur: commit,
+        onKeyDown: (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); commit(); } if (ev.key === 'Escape') { setVal(value || ''); setEditing(false); } },
+      });
+    }
+    return e('h2', { className: 'detail-title cd-title', onClick: () => setEditing(true) },
+      value || placeholder || 'Sin nombre', e(I.Edit, { width: 13, height: 13, className: 'cd-title-edit' }));
+  }
+
   // ---------- Mini calendario ----------
   function MiniCalendar({ cursor, onPick, onMonth }) {
     const first = C.startOfMonth(cursor);
@@ -210,6 +280,59 @@ import './UI.css';
           );
         }),
       ),
+    );
+  }
+
+  // ---------- Selectores de color / emoji para tarjetas (tareas, clientes, …) ----------
+  const SWATCH_COLORS = [
+    '#15784f', '#2563eb', '#b8791b', '#7257c9', '#0e8a8a',
+    '#d8504a', '#c2861a', '#0a5e5e', '#9d4edd', '#e85d75',
+  ];
+  function ColorPicker({ value, onPick, onClose }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) onClose(); };
+      document.addEventListener("mousedown", h);
+      return () => document.removeEventListener("mousedown", h);
+    }, [onClose]);
+    return e("div", { className: "color-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
+      SWATCH_COLORS.map((c) => e("button", {
+        key: c, type: "button", title: "Elegir este color",
+        className: "color-swatch" + (value === c ? " on" : ""),
+        style: { background: c },
+        onClick: () => { onPick(c); onClose(); },
+      })),
+      e("button", {
+        type: "button", title: "Sin color personalizado",
+        className: "color-swatch clear" + (!value ? " on" : ""),
+        onClick: () => { onPick(""); onClose(); },
+      }, e(I.Close, { width: 11, height: 11 })),
+    );
+  }
+
+  const SWATCH_EMOJIS = [
+    '🏠', '🏡', '🔑', '🏢', '📋', '✅', '📞', '💰', '📸', '📝',
+    '⏰', '🎯', '🚗', '📅', '🔥', '💡', '⭐', '🎉', '👍', '📦',
+    '🧹', '🛠️', '📌', '💬', '👀', '🏖️', '✈️', '🐾', '🍀', '☀️',
+  ];
+  function EmojiPicker({ value, onPick, onClose }) {
+    const ref = useRef(null);
+    useEffect(() => {
+      const h = (ev) => { if (ref.current && !ref.current.contains(ev.target)) onClose(); };
+      document.addEventListener("mousedown", h);
+      return () => document.removeEventListener("mousedown", h);
+    }, [onClose]);
+    return e("div", { className: "emoji-pop", ref, onMouseDown: (ev) => ev.stopPropagation(), onClick: (ev) => ev.stopPropagation() },
+      SWATCH_EMOJIS.map((em) => e("button", {
+        key: em, type: "button",
+        className: "emoji-swatch" + (value === em ? " on" : ""),
+        onClick: () => { onPick(em); onClose(); },
+      }, em)),
+      e("button", {
+        type: "button", title: "Sin emoji",
+        className: "emoji-swatch clear" + (!value ? " on" : ""),
+        onClick: () => { onPick(""); onClose(); },
+      }, e(I.Close, { width: 11, height: 11 })),
     );
   }
 
@@ -367,16 +490,38 @@ import './UI.css';
     );
   }
 
+  // ---------- Toolbar Clientes ----------
+  function ClientesToolbar(p) {
+    const items = p.items || [];
+    return e("div", { className: "toolbar" },
+      e("div", { className: "tb-left" },
+        e("h1", { className: "tb-title" }, "Seguimiento de clientes"),
+        e("span", { className: "tb-count-pill" }, items.length + (items.length === 1 ? " cliente 🙂" : " clientes 🙂")),
+      ),
+      e("div", { className: "tb-right" },
+        e(Search, { query: p.query, setQuery: p.setQuery }),
+        e("select", { className: "resp-select", value: p.agentFilter, onChange: (ev) => p.setAgentFilter(ev.target.value) },
+          e("option", { value: "__all" }, "Todo el equipo"),
+          C.AGENTS.map((a) => e("option", { key: a.id, value: a.id }, a.name)),
+        ),
+      ),
+    );
+  }
+
   // ---------- Tab bar (blanco sólido, flotante) ----------
   const TABS = [
     { key: "calendario", label: "Calendario", icon: I.Calendar },
     { key: "tareas", label: "Tareas", icon: I.Grid },
     { key: "recepcion", label: "Recepción", icon: I.Inbox },
+    { key: "clientes", label: "Clientes", icon: I.Users },
     { key: "agenda", label: "Agenda", icon: I.List },
   ];
+  // En mobile no entran 5 pestañas + FAB cómodamente: se reemplaza "Agenda" por "Clientes"
+  const MOBILE_TABS = TABS.filter((t) => t.key !== "agenda");
   const ADMIN_TAB = { key: "usuarios", label: "Usuarios", icon: I.User };
   function TabBar({ tab, setTab, isSuperAdmin, isMobile, onNew }) {
-    const tabs = isSuperAdmin ? [...TABS, ADMIN_TAB] : TABS;
+    const base = isMobile ? MOBILE_TABS : TABS;
+    const tabs = isSuperAdmin ? [...base, ADMIN_TAB] : base;
     const renderTab = (t) => e("button", { key: t.key, className: "tab" + (tab === t.key ? " active" : ""), onClick: () => setTab(t.key) },
       e(t.icon, { width: 17, height: 17 }), e("span", null, t.label));
     if (!isMobile || !onNew) {
@@ -390,6 +535,8 @@ import './UI.css';
     );
   }
 
-  export { Avatar, ProfileAvatar, TypeDot, StatusBadge, InfoChip, InfoCard, Confetti, MiniCalendar, FiltersPopover, Search,
-    CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, TabBar, TYPE_ICON };
+  export { Avatar, ProfileAvatar, TypeDot, StatusBadge, InfoChip, InfoCard, EditableField, TitleField, Confetti,
+    MiniCalendar, FiltersPopover, Search,
+    CalendarToolbar, AgendaToolbar, TareasToolbar, RecepcionToolbar, ClientesToolbar, TabBar, TYPE_ICON,
+    ColorPicker, EmojiPicker, SWATCH_COLORS, SWATCH_EMOJIS };
 

@@ -1,0 +1,138 @@
+/* Cartelera de seguimiento de clientes */
+.clientes-card{overflow-y:auto;padding:20px 22px;}
+
+@keyframes cl-pop{
+  from{opacity:0;transform:translateY(14px) scale(.96);}
+  to{opacity:1;transform:none;}
+}
+@keyframes cl-wiggle{
+  0%,100%{transform:rotate(0deg) scale(1);}
+  25%{transform:rotate(-12deg) scale(1.12);}
+  75%{transform:rotate(12deg) scale(1.12);}
+}
+
+.cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px;}
+
+/* ---------- Tarjeta fantasma "+ Nuevo cliente" ---------- */
+.cl-add-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  min-height:178px;border:2px dashed var(--mint-400);border-radius:18px;background:var(--mint-50);
+  color:var(--green-700);font-weight:700;font-size:13.5px;transition:.16s;position:relative;}
+.cl-add-card:hover{background:var(--mint-100);border-color:var(--green-500);transform:translateY(-4px);box-shadow:var(--shadow-card);}
+.cl-add-plus{width:40px;height:40px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;
+  color:var(--green-700);box-shadow:var(--shadow-sm);transition:transform .2s;}
+.cl-add-card:hover .cl-add-plus{transform:rotate(90deg) scale(1.1);}
+.cl-add-emoji{position:absolute;top:12px;right:14px;font-size:15px;opacity:0;transition:opacity .14s;}
+.cl-add-card:hover .cl-add-emoji{opacity:1;}
+
+/* ---------- Tarjeta de cliente ---------- */
+.cl-card{position:relative;background:#fff;border-radius:18px;padding:16px 16px 14px;box-shadow:var(--shadow-sm);
+  border:1px solid var(--line-2);border-top:4px solid var(--cl-accent,var(--mint-400));display:flex;flex-direction:column;gap:10px;
+  animation:cl-pop .38s cubic-bezier(.22,1.1,.36,1) backwards;animation-delay:var(--cl-delay,0s);
+  transition:transform .16s,box-shadow .16s,border-color .16s;cursor:pointer;text-align:left;}
+.cl-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-card);border-color:var(--cl-accent,var(--mint-400));}
+.cl-card:hover .cl-emoji{animation:cl-wiggle .5s ease;}
+
+.cl-actions{position:absolute;top:10px;right:10px;display:flex;gap:5px;opacity:0;transform:translateY(-3px);
+  transition:opacity .14s,transform .14s;cursor:default;}
+.cl-card:hover .cl-actions{opacity:1;transform:none;}
+.cl-act{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:var(--mint-50);color:var(--ink-2);transition:.12s;}
+.cl-act:hover{background:var(--mint-100);color:var(--green-700);transform:scale(1.08);}
+.cl-act.danger:hover{background:#fcefee;color:#c0392f;}
+.cl-act-emoji{font-size:13px;line-height:1;}
+.cl-color-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);box-shadow:0 0 0 1px #fff;}
+
+.cl-head{display:flex;align-items:flex-start;gap:11px;padding-right:54px;}
+.cl-emoji{font-size:26px;line-height:1;flex-shrink:0;display:inline-block;}
+.cl-head-text{min-width:0;}
+.cl-name{margin:0;font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cl-date{display:inline-flex;align-items:center;gap:4px;margin-top:3px;font-size:11.5px;font-weight:600;color:var(--ink-3);}
+
+.cl-body{display:flex;flex-direction:column;gap:6px;min-height:20px;}
+.cl-line{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:var(--ink-2);font-weight:500;line-height:1.4;}
+.cl-line-ico{flex-shrink:0;}
+.cl-line-txt{word-break:break-word;}
+.cl-line-empty{color:var(--ink-3);font-style:italic;}
+
+.cl-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;
+  padding-top:11px;border-top:1px solid var(--line-2);}
+.cl-agent{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--ink);min-width:0;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.cl-agent-none{font-size:12px;font-weight:600;color:var(--ink-3);font-style:italic;}
+
+.cl-contact{display:flex;gap:6px;flex-shrink:0;}
+.cl-cbtn{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:#fff;transition:transform .12s,box-shadow .12s;flex-shrink:0;}
+.cl-cbtn:hover{transform:scale(1.14) rotate(-4deg);}
+.cl-cbtn:active{transform:scale(.94);}
+.cl-cbtn.wa{background:#25d366;}
+.cl-cbtn.call{background:#2563eb;}
+.cl-cbtn.mail{background:#b8791b;}
+.cl-cbtn.off{background:var(--line-2);color:var(--ink-3);pointer-events:none;opacity:.6;}
+.cl-cbtn.lg{width:auto;height:auto;border-radius:11px;padding:10px 14px;gap:7px;font-size:12.5px;font-weight:700;
+  text-decoration:none;flex:1;justify-content:center;}
+.cl-cbtn.lg:hover{transform:translateY(-2px);}
+
+.cl-empty-inline{grid-column:1/-1;display:flex;align-items:center;justify-content:center;padding:34px 18px;
+  color:var(--ink-3);font-weight:600;text-align:center;}
+
+/* ---------- Modal de detalle de cliente ---------- */
+.client-detail{width:540px;max-width:100%;max-height:90vh;background:var(--surface);border-radius:20px;overflow:hidden;
+  box-shadow:var(--shadow-lg);display:flex;flex-direction:column;animation:modal-pop .32s cubic-bezier(.22,1.1,.36,1);}
+.client-detail .detail-body{overflow-y:auto;display:flex;flex-direction:column;gap:12px;}
+
+.cd-contact-row{display:flex;gap:9px;}
+
+/* ---------- Lista de propiedades ofrecidas (tarjeta) ---------- */
+.cl-offer-list{display:flex;flex-direction:column;gap:5px;}
+.cl-more{color:var(--ink-3);font-style:italic;font-size:11.5px;}
+
+/* ---------- Lista de propiedades ofrecidas (modal de detalle) ---------- */
+.cd-list-chip{align-items:flex-start;}
+.cd-list{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px;}
+.cd-list-item{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink);
+  background:#fff;border-radius:9px;padding:6px 8px;}
+.cd-list-ico{flex-shrink:0;font-size:13px;}
+.cd-list-text{flex:1;cursor:pointer;word-break:break-word;}
+.cd-list-item input{border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;
+  font-weight:500;color:var(--ink);width:100%;padding:0;}
+.cd-list-del{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);transition:.12s;}
+.cd-list-del:hover{background:#fcefee;color:#c0392f;}
+.cd-list-input{border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:13px;font-weight:500;
+  outline:none;width:100%;margin-top:2px;font-family:inherit;}
+.cd-list-input:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
+.cd-list-add{display:inline-flex;align-items:center;gap:5px;margin-top:2px;font-size:12px;font-weight:700;
+  color:var(--green-700);background:none;padding:4px 2px;}
+.cd-list-add:hover{text-decoration:underline;}
+
+/* ---------- Lista de propiedades ofrecidas (formulario de alta) ---------- */
+.fg-offer-list{display:flex;flex-direction:column;gap:6px;}
+.fg-offer-row{display:flex;align-items:center;gap:7px;background:var(--mint-50);border-radius:9px;
+  padding:6px 9px;font-size:13px;font-weight:500;color:var(--ink);}
+.fg-offer-txt{flex:1;word-break:break-word;}
+.fg-offer-del{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-3);transition:.12s;}
+.fg-offer-del:hover{background:#fcefee;color:#c0392f;}
+.fg-offer-add{display:flex;gap:8px;align-items:center;}
+.fg-offer-add input{flex:1;}
+
+/* ---------- Mobile ---------- */
+@media (max-width:760px){
+  .clientes-card{padding:14px;}
+  .cl-grid{grid-template-columns:1fr;gap:12px;}
+  .cl-actions{opacity:1;transform:none;}
+
+  /* Ghost "+ Nuevo cliente": franja horizontal angosta en vez de bloque cuadrado */
+  .cl-add-card{flex-direction:row;width:100%;min-height:0;height:62px;border-radius:18px;gap:12px;
+    padding:0 16px;justify-content:flex-start;background:linear-gradient(100deg,var(--mint-50),var(--mint-100));}
+  .cl-add-plus{width:38px;height:38px;flex-shrink:0;}
+  .cl-add-label{font-size:14px;}
+  .cl-add-emoji{position:static;margin-left:auto;opacity:.7;}
+}
+@media (max-width:560px){
+  .client-detail{width:100%;max-width:100%;border-radius:20px 20px 0 0;max-height:92vh;
+    animation:modal-pop-up .28s cubic-bezier(.22,1.1,.36,1);}
+  .cd-contact-row{flex-direction:column;}
+}

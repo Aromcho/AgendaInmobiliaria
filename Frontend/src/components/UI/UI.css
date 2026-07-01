@@ -94,7 +94,7 @@
 /* Tarjetas de datos en modales de detalle (InfoChip / InfoCard) */
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:9px;margin-bottom:9px;}
 .detail-chip{position:relative;display:flex;align-items:center;gap:11px;background:var(--mint-50);border-radius:14px;
-  padding:11px 14px;overflow:hidden;transition:transform .16s,box-shadow .16s,background .16s;}
+  padding:11px 14px;overflow:hidden;flex-shrink:0;transition:transform .16s,box-shadow .16s,background .16s;}
 .detail-chip:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(16,40,30,.12);background:var(--mint-100);}
 .detail-chip.full{grid-column:1/-1;margin-bottom:9px;}
 .dc-ico{flex-shrink:0;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;
