@@ -52,6 +52,10 @@ export async function getLinkPreview(url) {
   return requestJSON(`/link-preview?${new URLSearchParams({ url }).toString()}`);
 }
 
+export async function getPropertyPreview(ref) {
+  return requestJSON(`/link-preview?${new URLSearchParams({ ref }).toString()}`);
+}
+
 export async function getNotifications() {
   return requestJSON('/notifications');
 }

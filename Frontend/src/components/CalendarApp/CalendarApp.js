@@ -311,11 +311,17 @@ function App({ onLogout, session }) {
     setClients((list) => [{ ...created, id: created.id || created._id }, ...list]);
     setClientForm(null);
   };
-  // Actualización optimista (UI al instante) + persistencia en el backend
+  // Actualización optimista (UI al instante) + persistencia en el backend.
+  // Al terminar, se reconcilia con la respuesta del server (ej. propertyPreview,
+  // que el backend recalcula a partir del link/ID y no viaja en el patch optimista).
   const patchClient = async (id, fields) => {
     setClients((list) => list.map((it) => (it.id === id ? { ...it, ...fields } : it)));
     setClientDetail((d) => (d && d.id === id ? { ...d, ...fields } : d));
-    await updateResource('clients', id, fields);
+    const updated = await updateResource('clients', id, fields);
+    if (!updated) return;
+    const merged = { ...updated, id: updated.id || updated._id };
+    setClients((list) => list.map((it) => (it.id === id ? { ...it, ...merged } : it)));
+    setClientDetail((d) => (d && d.id === id ? { ...d, ...merged } : d));
   };
   const deleteClient = async (item) => {
     await deleteResource('clients', item.id);

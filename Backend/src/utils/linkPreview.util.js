@@ -11,6 +11,18 @@ export function extractFirstUrl(text) {
   return match ? match[0] : null;
 }
 
+// Acepta un link de publicación o un ID numérico de propiedad (Tokko) y devuelve
+// la URL de la ficha pública para poder resolver su imagen de portada.
+export function resolvePropertyUrl(raw) {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return null;
+  if (/^\d+$/.test(trimmed)) {
+    const base = (process.env.PROPERTY_SITE_URL || '').replace(/\/+$/, '');
+    return base ? `${base}/propiedad/${trimmed}` : null;
+  }
+  return trimmed;
+}
+
 function isPrivateIp(ip) {
   if (net.isIPv4(ip)) {
     const parts = ip.split('.').map(Number);

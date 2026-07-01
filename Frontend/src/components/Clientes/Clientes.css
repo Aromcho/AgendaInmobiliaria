@@ -47,7 +47,9 @@
 .cl-head-text{min-width:0;}
 .cl-name{margin:0;font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.2px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cl-date{display:inline-flex;align-items:center;gap:4px;margin-top:3px;font-size:11.5px;font-weight:600;color:var(--ink-3);}
+.cl-meta-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;margin-top:3px;}
+.cl-date{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--ink-3);}
+.cl-budget{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--green-700);}
 
 .cl-body{display:flex;flex-direction:column;gap:6px;min-height:20px;}
 .cl-line{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:var(--ink-2);font-weight:500;line-height:1.4;}
@@ -90,33 +92,63 @@
 
 /* ---------- Lista de propiedades ofrecidas (modal de detalle) ---------- */
 .cd-list-chip{align-items:flex-start;}
-.cd-list{display:flex;flex-direction:column;gap:6px;margin:4px 0 6px;}
-.cd-list-item{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink);
-  background:#fff;border-radius:9px;padding:6px 8px;}
-.cd-list-ico{flex-shrink:0;font-size:13px;}
-.cd-list-text{flex:1;cursor:pointer;word-break:break-word;}
-.cd-list-item input{border:none;background:transparent;outline:none;font-family:inherit;font-size:13px;
-  font-weight:500;color:var(--ink);width:100%;padding:0;}
-.cd-list-del{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+.cd-list{display:flex;flex-direction:column;gap:8px;margin:4px 0 8px;}
+.cd-list-item{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;font-weight:500;color:var(--ink);
+  background:#fff;border:1px solid var(--line-2);border-radius:11px;padding:10px 11px;}
+.cd-list-ico{flex-shrink:0;font-size:14px;margin-top:2px;}
+.cd-list-body{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;}
+.cd-list-text{cursor:pointer;word-break:break-word;line-height:1.4;}
+.cd-list-edit-row{display:flex;align-items:center;gap:6px;}
+/* .cd-chip input (Modals.css) empata en especificidad con ".cd-list-edit-row input";
+   se agrega el selector con ".cd-chip" para ganar esa pulseada sin depender del orden de carga */
+.cd-list-edit-row input,.cd-chip .cd-list-edit-row input{flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-family:inherit;
+  font-size:13.5px;font-weight:500;color:var(--ink);background:#fff;outline:none;transition:.14s;}
+.cd-list-edit-row input:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
+.cd-list-ok,.cd-list-cancel{flex-shrink:0;width:26px;height:26px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;transition:.12s;}
+.cd-list-ok{color:var(--green-700);background:var(--mint-50);}
+.cd-list-ok:hover{background:var(--mint-100);}
+.cd-list-cancel{color:var(--ink-3);}
+.cd-list-cancel:hover{background:var(--line-2);color:var(--ink-2);}
+.cd-list-del{flex-shrink:0;width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;
   color:var(--ink-3);transition:.12s;}
 .cd-list-del:hover{background:#fcefee;color:#c0392f;}
-.cd-list-input{border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-size:13px;font-weight:500;
-  outline:none;width:100%;margin-top:2px;font-family:inherit;}
-.cd-list-input:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
-.cd-list-add{display:inline-flex;align-items:center;gap:5px;margin-top:2px;font-size:12px;font-weight:700;
-  color:var(--green-700);background:none;padding:4px 2px;}
-.cd-list-add:hover{text-decoration:underline;}
+
+/* ---------- Editor para agregar una propiedad ofrecida (modal + alta) ---------- */
+.offer-editor{display:flex;flex-direction:column;gap:8px;background:var(--mint-50);border:1px solid var(--mint-100);
+  border-radius:12px;padding:12px;margin-top:2px;}
+/* Idem: ".cd-chip .offer-editor input" le gana en especificidad a ".cd-chip input" de Modals.css */
+.offer-editor input,.cd-chip .offer-editor input{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13.5px;
+  font-weight:500;color:var(--ink);background:#fff;outline:none;transition:.14s;width:100%;font-family:inherit;}
+.offer-editor input:hover{border-color:var(--mint-400);}
+.offer-editor input:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
+.offer-editor-hint{font-size:11.5px;color:var(--ink-3);line-height:1.4;}
+.offer-editor-actions{display:flex;justify-content:flex-end;gap:8px;}
+.offer-add-trigger{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+  padding:11px;border:1.5px dashed var(--mint-400);border-radius:10px;color:var(--green-700);
+  font-size:12.5px;font-weight:700;background:var(--mint-50);transition:.12s;}
+.offer-add-trigger:hover{background:var(--mint-100);border-color:var(--green-500);}
 
 /* ---------- Lista de propiedades ofrecidas (formulario de alta) ---------- */
-.fg-offer-list{display:flex;flex-direction:column;gap:6px;}
-.fg-offer-row{display:flex;align-items:center;gap:7px;background:var(--mint-50);border-radius:9px;
-  padding:6px 9px;font-size:13px;font-weight:500;color:var(--ink);}
+.fg-offer-wrap{display:flex;flex-direction:column;gap:8px;}
+.fg-offer-list{display:flex;flex-direction:column;gap:8px;}
+.fg-offer-row{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line-2);border-radius:10px;
+  padding:9px 11px;font-size:13.5px;font-weight:500;color:var(--ink);}
 .fg-offer-txt{flex:1;word-break:break-word;}
-.fg-offer-del{flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+.fg-offer-del{flex-shrink:0;width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;
   color:var(--ink-3);transition:.12s;}
 .fg-offer-del:hover{background:#fcefee;color:#c0392f;}
-.fg-offer-add{display:flex;gap:8px;align-items:center;}
-.fg-offer-add input{flex:1;}
+
+/* ---------- Vista previa de la propiedad anclada ---------- */
+.link-preview{display:flex;flex-direction:column;margin-top:8px;border:1px solid var(--line);border-radius:11px;overflow:hidden;text-decoration:none;background:#fafbfa;transition:.12s;}
+.link-preview:hover{border-color:var(--mint-200);box-shadow:0 4px 12px rgba(16,40,30,.08);}
+.link-preview .lp-img{width:100%;height:120px;object-fit:cover;background:var(--line-2);}
+.link-preview.sm .lp-img{height:90px;}
+.lp-img-empty{display:flex;align-items:center;justify-content:center;color:var(--ink-3);}
+.lp-body{padding:8px 10px;display:flex;flex-direction:column;gap:2px;}
+.lp-title{font-size:12px;font-weight:700;color:var(--ink);line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.lp-domain{font-size:10.5px;font-weight:600;color:var(--ink-3);text-transform:uppercase;letter-spacing:.3px;}
+.lp-loading{font-size:11.5px;color:var(--ink-3);margin-top:6px;}
 
 /* ---------- Mobile ---------- */
 @media (max-width:760px){
