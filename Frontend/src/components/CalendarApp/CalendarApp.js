@@ -120,6 +120,21 @@ function App({ onLogout, session }) {
     return () => { active = false; };
   }, [taskOwner]);
 
+  // ---- roster real de agentes (backend) -> reemplaza la semilla hardcodeada de CAL.AGENTS ----
+  useEffect(() => {
+    let active = true;
+    fetchCollection('users/roster').then((remote) => {
+      if (!active || !remote?.length) return;
+      C.setAgents(remote);
+      setAgentFilter((o) => {
+        const next = { ...o };
+        C.AGENTS.forEach((a) => { if (!(a.id in next)) next[a.id] = true; });
+        return next;
+      });
+    });
+    return () => { active = false; };
+  }, []);
+
   // ---- equipo disponible para que un ADMIN/SUPER_ADMIN vea tareas de otros ----
   useEffect(() => {
     if (!canManageTasks) { setTeamUsers([]); return; }

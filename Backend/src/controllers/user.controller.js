@@ -10,6 +10,21 @@ export async function getUsers(_req, res, next) {
   }
 }
 
+// Directorio de personas activas para pintar avatares/selects (calendario, recepción, clientes).
+// Abierto a cualquier usuario logueado -> a diferencia de getUsers/getTeamUsers no requiere admin
+// ni excluye al propio usuario, porque acá se necesita el equipo completo.
+export async function getRoster(_req, res, next) {
+  try {
+    const users = await User.find({ active: true })
+      .select('name email role photo')
+      .sort({ name: 1 })
+      .lean();
+    return res.json(users);
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function getTeamUsers(req, res, next) {
   try {
     const users = await User.find({ active: true, _id: { $ne: req.user?.id } })

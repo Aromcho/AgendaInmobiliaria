@@ -77,10 +77,46 @@
     { id: "a3", name: "Paul", initials: "P", color: "#0e8a8a", role: "Equipo", email: "paulgarciapamapas@gamil.com" },
     { id: "a4", name: "Fabiana", initials: "F", color: "#c2861a", role: "Equipo", email: "garciaafaa@gmail.com" },
     { id: "a5", name: "Pablo", initials: "P", color: "#2563eb", role: "Equipo", email: "Martino_pablo@hotmail.com" },
-    { id: "a6", name: "Conrado", initials: "C", color: "#15784f", role: "Equipo" },
-    { id: "a7", name: "Curly", initials: "C", color: "#b8791b", role: "Equipo" },
+    { id: "a9", name: "Valentin", initials: "V", color: "#15784f", role: "Equipo" },
     { id: "a8", name: "Arom Aguilar", initials: "AA", color: "#9d4edd", role: "Super admin", email: "barriosarom@gmail.com" },
   ];
+  // El array de arriba es solo la semilla inicial (se ve un instante antes de que responda el
+  // backend). La lista real y viva viene de GET /api/users/roster y se aplica con setAgents().
+
+  const AVATAR_PALETTE = ['#15784f', '#2563eb', '#b8791b', '#7257c9', '#0e8a8a', '#d8504a', '#c2861a', '#0a5e5e', '#9d4edd', '#e85d75'];
+  function initialsOf(name) {
+    const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '?';
+    return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  }
+  function colorOf(str) {
+    const s = String(str || '');
+    let hash = 0;
+    for (let i = 0; i < s.length; i++) hash = (hash * 31 + s.charCodeAt(i)) >>> 0;
+    return AVATAR_PALETTE[hash % AVATAR_PALETTE.length];
+  }
+  function roleLabel(role) {
+    if (role === 'SUPER_ADMIN') return 'Super admin';
+    if (role === 'ADMIN') return 'Titular';
+    return 'Equipo';
+  }
+  // Reemplaza en vivo el roster de agentes con lo que devuelve el backend (usuarios reales).
+  // Muta el array en lugar de reasignarlo: todo lo que ya tiene una referencia a CAL.AGENTS
+  // (toolbars, selects, recepción) ve el cambio en el próximo render, sin duplicar la lista
+  // a mano en cada componente.
+  function setAgents(list) {
+    if (!Array.isArray(list) || !list.length) return;
+    const mapped = list.map((u) => ({
+      id: u.id || u._id,
+      name: u.name,
+      email: u.email,
+      role: roleLabel(u.role),
+      initials: initialsOf(u.name),
+      color: colorOf(u.email || u.name),
+    }));
+    AGENTS.length = 0;
+    AGENTS.push(...mapped);
+  }
 
   // ---------- Propiedades (se cargan desde la app) ----------
   const PROPERTIES = [];
@@ -165,5 +201,6 @@
     isSameDay, isSameMonth, dayDiff, ymd, fmtTime, fmtMonthYear, minutesOfDay, nights, eventDateLine, eventDueState,
     propById: (id) => PROPERTIES.find(p => p.id === id) || null,
     agentById: (id) => AGENTS.find(a => a.id === id) || null,
+    setAgents,
   };
 
