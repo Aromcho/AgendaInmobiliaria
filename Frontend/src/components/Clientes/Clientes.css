@@ -1,5 +1,5 @@
 /* Cartelera de seguimiento de clientes */
-.clientes-card{overflow-y:auto;padding:20px 22px;}
+.view-card.clientes-card{overflow-y:auto;overflow-x:hidden;padding:20px 22px;}
 
 @keyframes cl-pop{
   from{opacity:0;transform:translateY(14px) scale(.96);}
