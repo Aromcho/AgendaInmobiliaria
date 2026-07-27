@@ -201,6 +201,11 @@
     isSameDay, isSameMonth, dayDiff, ymd, fmtTime, fmtMonthYear, minutesOfDay, nights, eventDateLine, eventDueState,
     propById: (id) => PROPERTIES.find(p => p.id === id) || null,
     agentById: (id) => AGENTS.find(a => a.id === id) || null,
+    // Respaldo para cuando el id guardado ya no está en el roster vivo (p.ej. quedó
+    // apuntando a la semilla vieja "a1".."a9" antes de que existiera el roster real):
+    // arma un agente "de nombre" para no mostrar "Sin agente" habiendo un dato guardado.
+    agentByName: (name) => (name ? AGENTS.find(a => a.name === name) : null) || null,
+    agentFallback: (name) => (name ? { name, initials: initialsOf(name), color: colorOf(name) } : null),
     setAgents,
   };
 

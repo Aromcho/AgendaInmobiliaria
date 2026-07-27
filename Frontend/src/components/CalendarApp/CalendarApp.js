@@ -59,6 +59,7 @@ function App({ onLogout, session }) {
   const [reception, setReception] = useState([]);
   const [clients, setClients] = useState([]);
   const [clientAgent, setClientAgent] = useState("__all");
+  const [clientView, setClientView] = useState("grid"); // grid | list
   const [clientForm, setClientForm] = useState(null);     // null cerrado; {} abierto (alta)
   const [clientDetail, setClientDetail] = useState(null); // cliente seleccionado (detalle + edición inline)
   const [typeFilter, setTypeFilter] = useState(() => initFilter(Object.keys(C.EVENT_TYPES)));
@@ -406,10 +407,11 @@ function App({ onLogout, session }) {
   } else if (tab === "clientes") {
     toolbar = e(ClientesToolbar, {
       items: clients, query, setQuery, agentFilter: clientAgent, setAgentFilter: setClientAgent,
+      view: clientView, setView: setClientView,
     });
     content = e("div", { className: "view-card clientes-card" },
       e(ClientesView, {
-        items: clients, query, agentFilter: clientAgent,
+        items: clients, query, agentFilter: clientAgent, view: clientView,
         onOpen: setClientDetail, onDelete: deleteClient,
         onColor: (item, color) => patchClient(item.id, { color }),
         onEmoji: (item, emoji) => patchClient(item.id, { emoji }),

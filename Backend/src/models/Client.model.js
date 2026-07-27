@@ -3,6 +3,9 @@ import { Schema, model } from 'mongoose';
 const clientSchema = new Schema(
   {
     agentId: { type: String, default: 'a1', index: true },
+    // Guardado en paralelo al id para poder mostrar el encargado aunque el roster de
+    // agentes cambie de ids con el tiempo (ver Frontend/src/lib/data.js: agentFallback)
+    agentName: { type: String, default: '' },
     fecha: { type: String, default: '' },
     cliente: { type: String, required: true, index: true },
     telefono: { type: String, default: '' },

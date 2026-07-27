@@ -504,6 +504,18 @@ import './UI.css';
           e("option", { value: "__all" }, "Todo el equipo"),
           C.AGENTS.map((a) => e("option", { key: a.id, value: a.id }, a.name)),
         ),
+        e("div", { className: "cl-view-toggle" },
+          e("button", {
+            type: "button", title: "Ver en tarjetas",
+            className: "cl-view-btn" + (p.view !== "list" ? " active" : ""),
+            onClick: () => p.setView("grid"),
+          }, e(I.Grid, { width: 15, height: 15 })),
+          e("button", {
+            type: "button", title: "Ver en lista",
+            className: "cl-view-btn" + (p.view === "list" ? " active" : ""),
+            onClick: () => p.setView("list"),
+          }, e(I.List, { width: 15, height: 15 })),
+        ),
       ),
     );
   }

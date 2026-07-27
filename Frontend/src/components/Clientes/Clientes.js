@@ -134,7 +134,9 @@ import './Clientes.css';
 
   // ---------- Tarjeta ----------
   function ClientCard({ item, index, onOpen, onDelete, onColor, onEmoji }) {
-    const ag = C.agentById(item.agentId);
+    // Si el id guardado ya no está en el roster vivo (cambió de ids con el tiempo),
+    // se muestra igual el nombre guardado en su momento en vez de "Sin agente"
+    const ag = C.agentById(item.agentId) || C.agentFallback(item.agentName);
     const emoji = item.emoji || emojiFor(item.cliente || item.id);
     const accent = item.color || '';
     const [openPicker, setOpenPicker] = useState(null); // null | "color" | "emoji"
@@ -197,6 +199,59 @@ import './Clientes.css';
     );
   }
 
+  // ---------- Fila (vista lista) ----------
+  function ClientListRow({ item, index, onOpen, onDelete, onColor, onEmoji }) {
+    const ag = C.agentById(item.agentId) || C.agentFallback(item.agentName);
+    const emoji = item.emoji || emojiFor(item.cliente || item.id);
+    const accent = item.color || '';
+    const [openPicker, setOpenPicker] = useState(null); // null | "color" | "emoji"
+    const wa = waLink(item.telefono, item.cliente);
+    const tel = item.telefono ? 'tel:' + item.telefono.replace(/\s/g, '') : null;
+    const mail = item.email ? 'mailto:' + item.email : null;
+    const ofrecidos = toOfferList(item.ofreci);
+    const resumen = item.busca || (ofrecidos.length ? '🏠 ' + ofrecidos[0].text : '');
+
+    return e('div', {
+      className: 'cl-row',
+      style: { '--cl-delay': `${Math.min(index, 12) * 0.03}s`, '--cl-accent': accent || 'var(--mint-400)' },
+      onClick: () => onOpen(item),
+    },
+      e('span', { className: 'cl-row-emoji' }, emoji),
+      e('div', { className: 'cl-row-main' },
+        e('span', { className: 'cl-row-name' }, item.cliente || 'Sin nombre'),
+        resumen ? e('span', { className: 'cl-row-sub' }, resumen) : null,
+      ),
+      e('div', { className: 'cl-row-meta' },
+        item.fecha ? e('span', { className: 'cl-date' }, e(I.Calendar, { width: 11, height: 11 }), fmtFecha(item.fecha)) : null,
+        item.presupuesto ? e('span', { className: 'cl-budget' }, '💰', item.presupuesto) : null,
+      ),
+      ag ? e('span', { className: 'cl-agent cl-row-agent', title: ag.name }, e(Avatar, { agent: ag, size: 22 }), e('span', null, ag.name)) : e('span', { className: 'cl-agent-none cl-row-agent' }, 'Sin agente'),
+      e('div', { className: 'cl-contact cl-row-contact', onClick: (ev) => ev.stopPropagation() },
+        e('a', {
+          className: 'cl-cbtn wa' + (wa ? '' : ' off'), href: wa || undefined, target: '_blank', rel: 'noreferrer',
+          title: wa ? 'Escribir por WhatsApp' : 'Sin teléfono', onClick: (ev) => { if (!wa) ev.preventDefault(); },
+        }, e(I.WhatsApp, { width: 13, height: 13 })),
+        e('a', {
+          className: 'cl-cbtn call' + (tel ? '' : ' off'), href: tel || undefined,
+          title: tel ? 'Llamar' : 'Sin teléfono', onClick: (ev) => { if (!tel) ev.preventDefault(); },
+        }, e(I.Phone, { width: 12, height: 12 })),
+        e('a', {
+          className: 'cl-cbtn mail' + (mail ? '' : ' off'), href: mail || undefined,
+          title: mail ? 'Enviar email' : 'Sin email', onClick: (ev) => { if (!mail) ev.preventDefault(); },
+        }, e(I.Mail, { width: 12, height: 12 })),
+      ),
+      e('div', { className: 'cl-actions cl-row-actions', onClick: (ev) => ev.stopPropagation() },
+        e('button', { className: 'cl-act', title: 'Emoji de la tarjeta', onClick: () => setOpenPicker((o) => (o === 'emoji' ? null : 'emoji')) },
+          e('span', { className: 'cl-act-emoji' }, emoji)),
+        e('button', { className: 'cl-act', title: 'Color del borde', onClick: () => setOpenPicker((o) => (o === 'color' ? null : 'color')) },
+          e('span', { className: 'cl-color-dot', style: { background: accent || 'transparent', borderColor: accent || 'var(--ink-3)' } })),
+        e('button', { className: 'cl-act danger', title: 'Eliminar', onClick: () => onDelete(item) }, e(I.Trash, { width: 13, height: 13 })),
+        openPicker === 'color' ? e(ColorPicker, { value: accent, onPick: (c) => onColor(item, c), onClose: () => setOpenPicker(null) }) : null,
+        openPicker === 'emoji' ? e(EmojiPicker, { value: item.emoji || '', onPick: (em) => onEmoji(item, em), onClose: () => setOpenPicker(null) }) : null,
+      ),
+    );
+  }
+
   // ---------- Tarjeta fantasma: "+ Nuevo cliente" ----------
   function ClientAddCard({ onClick }) {
     return e('button', { type: 'button', className: 'cl-add-card', onClick },
@@ -206,8 +261,8 @@ import './Clientes.css';
     );
   }
 
-  // ---------- Vista principal (grilla + buscador) ----------
-  function ClientesView({ items: allItems, query, agentFilter, onOpen, onDelete, onColor, onEmoji, onNew }) {
+  // ---------- Vista principal (grilla/lista + buscador) ----------
+  function ClientesView({ items: allItems, query, agentFilter, view, onOpen, onDelete, onColor, onEmoji, onNew }) {
     const list = useMemo(() => {
       const q = query.trim().toLowerCase();
       return (allItems || []).filter((it) => {
@@ -219,6 +274,17 @@ import './Clientes.css';
         return true;
       });
     }, [allItems, query, agentFilter]);
+
+    if (view === 'list') {
+      return e('div', { className: 'cl-list' },
+        list.length
+          ? list.map((it, i) => e(ClientListRow, { key: it.id, item: it, index: i + 1, onOpen, onDelete, onColor, onEmoji }))
+          : e('div', { className: 'cl-empty-inline' },
+              (allItems || []).length ? '🔍 No hay clientes que coincidan con la búsqueda.' : '¡Sumá tu primer cliente y arrancá el seguimiento! 🎉'),
+        e('button', { type: 'button', className: 'cl-add-row', onClick: onNew },
+          e(I.Plus, { width: 15, height: 15 }), 'Nuevo cliente'),
+      );
+    }
 
     return e('div', { className: 'cl-grid' },
       e(ClientAddCard, { onClick: onNew }),
@@ -342,7 +408,7 @@ import './Clientes.css';
   // ---------- Modal de detalle (lectura linda + edición inline por campo) ----------
   function ClientDetail({ item, onClose, onSave, onDelete }) {
     if (!item) return null;
-    const ag = C.agentById(item.agentId);
+    const ag = C.agentById(item.agentId) || C.agentFallback(item.agentName);
     const accent = item.color || '#15784f';
     const emoji = item.emoji || emojiFor(item.cliente || item.id);
     const wa = waLink(item.telefono, item.cliente);
@@ -364,7 +430,7 @@ import './Clientes.css';
               options: C.AGENTS.map((a) => ({ value: a.id, label: a.name })),
               icon: ag ? e(Avatar, { agent: ag, size: 18 }) : e(I.User, { width: 15, height: 15 }),
               displayValue: ag ? ag.name : 'Sin asignar',
-              onSave: (v) => onSave({ agentId: v }),
+              onSave: (v) => onSave({ agentId: v, agentName: C.agentById(v)?.name || '' }),
             }),
             e(EditableField, {
               type: 'date', label: 'Fecha', value: item.fecha,
@@ -487,6 +553,7 @@ import './Clientes.css';
       if (!f.cliente.trim()) return;
       onSave({
         agentId: f.agentId,
+        agentName: C.agentById(f.agentId)?.name || '',
         fecha: f.fecha,
         cliente: f.cliente.trim(),
         telefono: f.telefono.trim(),
