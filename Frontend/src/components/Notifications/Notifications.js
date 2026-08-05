@@ -10,7 +10,6 @@ const { useState, useRef, useEffect, useCallback } = React;
 const I = Icons;
 
 const POLL_MS = 10000;
-const EMOJI = { task: '📝', event: '⏰', reception: '🏠' };
 
 function requestBrowserPermission() {
   if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -39,57 +38,22 @@ function timeAgo(dateStr) {
   return `hace ${Math.floor(hr / 24)} d`;
 }
 
-function ToastStack({ toasts, onToastClick, onDismiss }) {
-  if (!toasts.length) return null;
-  return e('div', { className: 'toast-stack' },
-    toasts.map((t) => e('button', {
-      key: t._toastId,
-      className: 'toast',
-      style: { '--toast-color': t.color || '#15784f' },
-      onClick: () => onToastClick(t),
-    },
-      e('span', { className: 'toast-emoji' }, EMOJI[t.type] || '🔔'),
-      e('div', { className: 'toast-body' },
-        e('span', { className: 'toast-title' }, t.title),
-        t.message ? e('span', { className: 'toast-msg' }, t.message) : null,
-      ),
-      e('span', {
-        className: 'toast-close',
-        onClick: (ev) => { ev.stopPropagation(); onDismiss(t._toastId); },
-      }, e(I.Close, { width: 12, height: 12 })),
-    )),
-  );
-}
-
 function NotificationBell({ onNavigate }) {
   const [items, setItems] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-  const [toasts, setToasts] = useState([]);
   const ref = useRef(null);
   const seenIds = useRef(null);
-
-  // El toast queda en pantalla hasta que el usuario lo cierra o lo clickea
-  // (no se auto-descarta): así "se acumulan" si no está mirando la pantalla.
-  const pushToast = useCallback((item) => {
-    const toastId = `${item._id}-${Date.now()}`;
-    setToasts((list) => [...list, { ...item, _toastId: toastId }]);
-  }, []);
 
   const load = useCallback(() => {
     getNotifications().then((data) => {
       if (!data) return;
       const newItems = data.items || [];
       if (seenIds.current === null) {
-        // Primera carga de la sesión: "ponerse al día" con lo que quedó pendiente
-        // mientras no estaba conectado (toast sí, notificación del navegador no,
-        // para no inundar con avisos viejos apenas entra).
-        newItems.forEach((it) => { if (!it.read) pushToast(it); });
         seenIds.current = new Set(newItems.map((it) => it._id));
       } else {
         newItems.forEach((it) => {
           if (!it.read && !seenIds.current.has(it._id)) {
-            pushToast(it);
             pushBrowserNotification(it);
           }
           seenIds.current.add(it._id);
@@ -98,7 +62,7 @@ function NotificationBell({ onNavigate }) {
       setItems(newItems);
       setUnreadCount(data.unreadCount || 0);
     });
-  }, [pushToast]);
+  }, []);
 
   useEffect(() => {
     requestBrowserPermission();
@@ -128,20 +92,6 @@ function NotificationBell({ onNavigate }) {
     }
     setOpen(false);
     goTo(item);
-  };
-
-  const onToastClick = async (toast) => {
-    setToasts((list) => list.filter((t) => t._toastId !== toast._toastId));
-    if (!toast.read) {
-      await markNotificationRead(toast._id);
-      setItems((list) => list.map((it) => (it._id === toast._id ? { ...it, read: true } : it)));
-      setUnreadCount((c) => Math.max(0, c - 1));
-    }
-    goTo(toast);
-  };
-
-  const onDismissToast = (toastId) => {
-    setToasts((list) => list.filter((t) => t._toastId !== toastId));
   };
 
   const onMarkAll = async () => {
@@ -179,7 +129,6 @@ function NotificationBell({ onNavigate }) {
         ),
       ) : null,
     ),
-    e(ToastStack, { toasts, onToastClick, onDismiss: onDismissToast }),
   );
 }
 

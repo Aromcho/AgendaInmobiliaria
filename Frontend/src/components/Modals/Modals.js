@@ -124,7 +124,7 @@ import './Modals.css';
         setConfettiPos({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
       }
       setMode("celebrate");
-      setTimeout(() => onDone(ev), 1200);
+      setTimeout(() => { Promise.resolve(onDone(ev)).catch(() => {}); }, 1200);
     }
 
     return e("div", { className: "modal-scrim", onMouseDown: mode === "celebrate" ? undefined : onClose },

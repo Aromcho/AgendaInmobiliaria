@@ -101,14 +101,20 @@ function App({ onLogout, session }) {
   const currentOverdue = overdueEvents[0] || null;
   const dismissOverdue = (id) => setOverdueQueue((q) => (q || []).filter((x) => x !== id));
   const onOverdueDone = async (ev) => {
-    const updated = await updateResource('events', ev.id, { done: true });
-    if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, done: true } : x)));
-    dismissOverdue(ev.id);
+    try {
+      const updated = await updateResource('events', ev.id, { done: true });
+      if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, done: true } : x)));
+    } finally {
+      dismissOverdue(ev.id);
+    }
   };
   const onOverduePostpone = async (ev, newStart, newEnd) => {
-    const updated = await updateResource('events', ev.id, { start: newStart, end: newEnd, done: false });
-    if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, start: newStart, end: newEnd, done: false } : x)));
-    dismissOverdue(ev.id);
+    try {
+      const updated = await updateResource('events', ev.id, { start: newStart, end: newEnd, done: false });
+      if (updated) setEvents((list) => list.map((x) => (x.id === ev.id ? { ...x, start: newStart, end: newEnd, done: false } : x)));
+    } finally {
+      dismissOverdue(ev.id);
+    }
   };
 
   // ---- carga del tablero de tareas (3 columnas fijas del backend) ----
@@ -489,6 +495,7 @@ function App({ onLogout, session }) {
       onDelete: deleteClient,
     }) : null,
     (currentOverdue && !detail && !form && !taskForm && !recepDetail && !recepForm && !clientForm && !clientDetail) ? e(OverdueModal, {
+      key: currentOverdue.id,
       ev: currentOverdue, queuePos: 1, queueLen: overdueEvents.length,
       onClose: () => dismissOverdue(currentOverdue.id),
       onDone: onOverdueDone, onPostpone: onOverduePostpone,
