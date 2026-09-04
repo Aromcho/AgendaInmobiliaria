@@ -481,10 +481,12 @@ function App({ onLogout, session }) {
     }) : null,
     recepForm ? e(RecepForm, {
       nextNum: reception.reduce((m, it) => Math.max(m, it.num || 0), 0) + 1,
+      existingItems: reception,
       onClose: () => setRecepForm(false),
       onSave: addReception,
     }) : null,
     clientForm ? e(ClientForm, {
+      existingItems: clients,
       onClose: () => setClientForm(null),
       onSave: addClient,
     }) : null,

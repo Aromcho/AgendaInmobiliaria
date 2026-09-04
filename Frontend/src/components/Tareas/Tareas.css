@@ -51,6 +51,7 @@
 .tc-act{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);transition:.12s;flex-shrink:0;}
 .tc-act:hover{background:var(--mint-100);color:var(--green-700);}
 .tc-act.danger:hover{background:#fbe9e8;color:#d8504a;}
+.tc-act:disabled{opacity:.3;pointer-events:none;}
 .tc-color-dot{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(0,0,0,.15);}
 .tc-emoji-mini{font-size:16px;line-height:1;}
 

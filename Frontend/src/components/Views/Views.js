@@ -346,10 +346,11 @@ import './Views.css';
     // eventos del mes en curso, expandiendo reservas a su rango
     const first = C.startOfMonth(cursor);
     const last = C.addDays(C.addMonths(first, 1), -1);
+    // Más reciente/actual arriba, más viejo abajo
     const list = events.filter((ev) => {
       const [s, e2] = eventDayRange(ev);
       return e2 >= first && s <= last;
-    }).slice().sort((a, b) => C.parse(a.start) - C.parse(b.start) || (a.allDay ? -1 : 1));
+    }).slice().sort((a, b) => C.parse(b.start) - C.parse(a.start) || (a.allDay ? -1 : 1));
 
     // agrupar por día de inicio
     const groups = [];

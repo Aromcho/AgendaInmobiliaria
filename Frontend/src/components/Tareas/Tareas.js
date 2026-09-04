@@ -112,7 +112,7 @@ import './Tareas.css';
   }
 
   // ---------- Tarjeta ----------
-  function Card({ card, listId, accent, onDragStart, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, currentUserId, dimMatch, anim, onAnimEnd }) {
+  function Card({ card, listId, accent, onDragStart, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, onReorderCard, canMoveUp, canMoveDown, currentUserId, dimMatch, anim, onAnimEnd }) {
     const t = card.type ? C.EVENT_TYPES[card.type] : null;
     const ag = C.agentById(card.agentId);
     const Ico = card.type ? TYPE_ICON[card.type] : null;
@@ -180,6 +180,10 @@ import './Tareas.css';
         ag ? e(Avatar, { agent: ag, size: 27 }) : null,
       ),
       e("div", { className: "tc-actions", onClick: (ev) => ev.stopPropagation() },
+        e("button", { className: "tc-act", title: "Subir", disabled: !canMoveUp, onClick: () => onReorderCard(listId, card.id, -1) },
+          e(I.ChevronUp, { width: 16, height: 16 })),
+        e("button", { className: "tc-act", title: "Bajar", disabled: !canMoveDown, onClick: () => onReorderCard(listId, card.id, 1) },
+          e(I.ChevronDown, { width: 16, height: 16 })),
         e("button", { className: "tc-act", title: "Emoji de la tarjeta", onClick: () => setOpenPicker((o) => (o === "emoji" ? null : "emoji")) },
           card.emoji ? e("span", { className: "tc-emoji-mini" }, card.emoji) : e(I.Plus, { width: 15, height: 15 })),
         e("button", { className: "tc-act", title: "Color de la tarjeta", onClick: () => setOpenPicker((o) => (o === "color" ? null : "color")) },
@@ -213,7 +217,7 @@ import './Tareas.css';
   }
 
   // ---------- Columna ----------
-  function Column({ list, onDragStart, onDrop, onDragOverList, dragOverId, onAddCard, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, currentUserId, query, cardAnim, onAnimEnd }) {
+  function Column({ list, onDragStart, onDrop, onDragOverList, dragOverId, onAddCard, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, onReorderCard, currentUserId, query, cardAnim, onAnimEnd }) {
     const [adding, setAdding] = useState(false);
     const [title, setTitle] = useState("");
     const [desc, setDesc] = useState("");
@@ -241,13 +245,6 @@ import './Tareas.css';
         e("span", { className: "col-count" }, list.cards.length),
       ),
       e("div", { className: "col-body" },
-        list.cards.map((c) => {
-          const dim = q && !(c.title + " " + (c.description || "") + " " + (c.tag || "")).toLowerCase().includes(q);
-          return e(Card, {
-            key: c.id, card: c, listId: list.id, accent: list.accent, onDragStart, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard,
-            currentUserId, dimMatch: dim, anim: cardAnim && cardAnim[c.id], onAnimEnd,
-          });
-        }),
         adding
           ? e("div", { className: "add-card-box" },
               e("input", { ref: titleRef, value: title, autoFocus: true,
@@ -268,6 +265,14 @@ import './Tareas.css';
               ),
             )
           : e("button", { className: "add-card-btn", onClick: () => setAdding(true) }, e(I.Plus, { width: 15, height: 15 }), "Añadir tarjeta"),
+        list.cards.map((c, i) => {
+          const dim = q && !(c.title + " " + (c.description || "") + " " + (c.tag || "")).toLowerCase().includes(q);
+          return e(Card, {
+            key: c.id, card: c, listId: list.id, accent: list.accent, onDragStart, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, onReorderCard,
+            canMoveUp: i > 0, canMoveDown: i < list.cards.length - 1,
+            currentUserId, dimMatch: dim, anim: cardAnim && cardAnim[c.id], onAnimEnd,
+          });
+        }),
       ),
     );
   }
@@ -348,6 +353,19 @@ import './Tareas.css';
       return () => { window.removeEventListener("dragend", stopAutoScroll); stopAutoScroll(); };
     }, []);
 
+    function onReorderCard(listId, cardId, dir) {
+      const next = lists.map((l) => ({ ...l, cards: l.cards.slice() }));
+      const list = next.find((l) => l.id === listId);
+      if (!list) return;
+      const idx = list.cards.findIndex((c) => c.id === cardId);
+      const swapIdx = idx + dir;
+      if (idx < 0 || swapIdx < 0 || swapIdx >= list.cards.length) return;
+      const cards = list.cards;
+      [cards[idx], cards[swapIdx]] = [cards[swapIdx], cards[idx]];
+      const updates = cards.map((c, i) => { c.position = i; return { id: c.id, listId: list.id, position: i }; });
+      onMoveCard(next, updates, null);
+    }
+
     function onDragStart(ev, listId, cardId) {
       drag.current = { fromList: listId, cardId };
       ev.dataTransfer.effectAllowed = "move";
@@ -392,7 +410,7 @@ import './Tareas.css';
       lists.map((l) => e(Column, {
         key: l.id, list: l, query,
         onDragStart, onDrop, onDragOverList: setDragOverId, dragOverId,
-        onAddCard, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, currentUserId, cardAnim, onAnimEnd,
+        onAddCard, onDelCard, onEditCard, onColorCard, onEmojiCard, onImageCard, onReorderCard, currentUserId, cardAnim, onAnimEnd,
       })),
       e(AddListColumn, { onAddList }),
     );

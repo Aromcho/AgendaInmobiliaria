@@ -16,6 +16,7 @@ import React from 'react';
     Chevron: (p) => S(p, P("M9 6l6 6-6 6")),
     ChevronLeft: (p) => S(p, P("M15 6l-6 6 6 6")),
     ChevronDown: (p) => S(p, P("M6 9l6 6 6-6")),
+    ChevronUp: (p) => S(p, P("M6 15l6-6 6 6")),
     Plus: (p) => S(p, [e("path",{key:1,d:"M12 5v14"}), e("path",{key:2,d:"M5 12h14"})]),
     Search: (p) => S(p, [e("circle",{key:1,cx:11,cy:11,r:7}), e("path",{key:2,d:"M21 21l-4.3-4.3"})]),
     Clock: (p) => S(p, [e("circle",{key:1,cx:12,cy:12,r:9}), e("path",{key:2,d:"M12 7v5l3 2"})]),

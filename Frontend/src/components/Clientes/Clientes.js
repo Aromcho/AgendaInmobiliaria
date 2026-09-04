@@ -44,9 +44,12 @@ import './Clientes.css';
   // { text, propertyRef, propertyPreview } como el texto suelto viejo
   function normalizeOffer(item) {
     if (item && typeof item === 'object') {
-      return { text: item.text || '', propertyRef: item.propertyRef || '', propertyPreview: item.propertyPreview || null };
+      return {
+        text: item.text || '', propertyRef: item.propertyRef || '', propertyPreview: item.propertyPreview || null,
+        comment: item.comment || '', visited: !!item.visited,
+      };
     }
-    return { text: typeof item === 'string' ? item : '', propertyRef: '', propertyPreview: null };
+    return { text: typeof item === 'string' ? item : '', propertyRef: '', propertyPreview: null, comment: '', visited: false };
   }
 
   function toOfferList(v) {
@@ -78,6 +81,23 @@ import './Clientes.css';
     const before = text.slice(0, selStart);
     const after = text.slice(selEnd);
     return { text: before + token.label + after, ref: token.ref };
+  }
+
+  // Detección de duplicados al cargar un cliente nuevo: mismo teléfono o mismo apellido
+  // (última palabra del nombre) que uno ya existente
+  function normalizePhone(p) { return String(p || '').replace(/\D/g, ''); }
+  function lastNameOf(fullName) {
+    const parts = String(fullName || '').trim().split(/\s+/);
+    return parts.length ? parts[parts.length - 1].toLowerCase() : '';
+  }
+  function findDuplicateClient(items, { name, phone }) {
+    const ln = lastNameOf(name);
+    const ph = normalizePhone(phone);
+    return (items || []).find((it) => {
+      const itPhone = normalizePhone(it.telefono);
+      const itLn = lastNameOf(it.cliente);
+      return (ph && itPhone && ph === itPhone) || (ln && itLn && ln === itLn);
+    });
   }
 
   function waLink(phone, cliente) {
@@ -316,7 +336,7 @@ import './Clientes.css';
       }
       if (!text && !ref) { onRemove(); return; }
       if (text !== value.text || ref !== value.propertyRef) {
-        onChange({ text, propertyRef: ref, propertyPreview: ref === value.propertyRef ? value.propertyPreview : null });
+        onChange({ ...value, text, propertyRef: ref, propertyPreview: ref === value.propertyRef ? value.propertyPreview : null });
       }
     }
     function cancel() { setVal({ text: value.text, ref: value.propertyRef }); setEditing(false); }
@@ -325,6 +345,15 @@ import './Clientes.css';
       if (!result) return;
       ev.preventDefault();
       setVal({ text: result.text, ref: result.ref });
+    }
+
+    const [editingComment, setEditingComment] = useState(false);
+    const [commentVal, setCommentVal] = useState(value.comment || '');
+    useEffect(() => { if (!editingComment) setCommentVal(value.comment || ''); }, [value.comment, editingComment]);
+    function commitComment() {
+      setEditingComment(false);
+      const v = commentVal.trim();
+      if (v !== (value.comment || '')) onChange({ ...value, comment: v });
     }
 
     return e('div', { className: 'cd-list-item' },
@@ -343,6 +372,20 @@ import './Clientes.css';
           : e('span', { className: 'cd-list-text', onClick: () => setEditing(true) }, value.text),
         loading ? e('span', { className: 'lp-loading' }, 'Cargando vista previa…') : null,
         shown ? e(PropertyPreviewCard, { preview: shown, compact: true }) : null,
+        editingComment
+          ? e('input', {
+              className: 'cd-list-comment-input', autoFocus: true, value: commentVal,
+              placeholder: 'Comentario: ¿le gustó? ¿qué dijo?',
+              onChange: (ev) => setCommentVal(ev.target.value), onBlur: commitComment,
+              onKeyDown: (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); commitComment(); } if (ev.key === 'Escape') { setCommentVal(value.comment || ''); setEditingComment(false); } },
+            })
+          : e('span', { className: 'cd-list-comment' + (value.comment ? '' : ' empty'), onClick: () => setEditingComment(true) },
+              value.comment || '+ agregar comentario'),
+        e('button', {
+          type: 'button', className: 'cd-list-visited' + (value.visited ? ' on' : ''),
+          title: value.visited ? 'Marcar como no visitada' : 'Marcar como visitada',
+          onClick: () => onChange({ ...value, visited: !value.visited }),
+        }, e(I.Check, { width: 12, height: 12 }), value.visited ? 'Visitó' : 'No visitó'),
       ),
       e('button', { type: 'button', className: 'cd-list-del', title: 'Quitar', onClick: onRemove }, e(I.Close, { width: 12, height: 12 })),
     );
@@ -381,10 +424,6 @@ import './Clientes.css';
       e('span', { className: 'dc-ico' }, '🏠'),
       e('div', { className: 'dc-text' },
         e('div', { className: 'dc-label' }, '¿Qué le ofrecí?'),
-        items.length
-          ? e('div', { className: 'cd-list' },
-              items.map((it, i) => e(OfferedListItem, { key: i, value: it, onChange: (v) => updateAt(i, v), onRemove: () => removeAt(i) })))
-          : null,
         adding
           ? e('div', { className: 'offer-editor' },
               e('input', {
@@ -401,6 +440,10 @@ import './Clientes.css';
               ),
             )
           : e('button', { type: 'button', className: 'offer-add-trigger', onClick: () => setAdding(true) }, e(I.Plus, { width: 14, height: 14 }), 'Agregar propiedad ofrecida'),
+        items.length
+          ? e('div', { className: 'cd-list' },
+              items.map((it, i) => e(OfferedListItem, { key: i, value: it, onChange: (v) => updateAt(i, v), onRemove: () => removeAt(i) })))
+          : null,
       ),
     );
   }
@@ -414,6 +457,7 @@ import './Clientes.css';
     const wa = waLink(item.telefono, item.cliente);
     const tel = item.telefono ? 'tel:' + item.telefono.replace(/\s/g, '') : null;
     const mail = item.email ? 'mailto:' + item.email : null;
+    const { preview: clientLinkPreview, loading: clientLinkLoading } = usePropertyPreview(item.linkCliente, !!item.linkCliente);
 
     return e('div', { className: 'modal-scrim', onMouseDown: onClose },
       e('div', { className: 'client-detail', onMouseDown: (ev) => ev.stopPropagation() },
@@ -465,6 +509,13 @@ import './Clientes.css';
             onSave: (v) => onSave({ busca: v }),
           }),
           e(EditableField, {
+            label: 'Link que nos mandó', value: item.linkCliente, full: true,
+            icon: e(I.ExternalLink, { width: 15, height: 15 }), placeholder: 'Link de una propiedad que le interesó',
+            onSave: (v) => onSave({ linkCliente: v }),
+          }),
+          clientLinkLoading ? e('span', { className: 'lp-loading' }, 'Cargando vista previa…') : null,
+          clientLinkPreview ? e(PropertyPreviewCard, { preview: clientLinkPreview }) : null,
+          e(EditableField, {
             label: 'Presupuesto', value: item.presupuesto, full: true,
             icon: e(I.Coins, { width: 15, height: 15 }), placeholder: 'Ej. USD 120.000',
             onSave: (v) => onSave({ presupuesto: v }),
@@ -510,12 +561,6 @@ import './Clientes.css';
     function removeAt(i) { onChange(value.filter((_, idx) => idx !== i)); }
 
     return e('div', { className: 'fg-offer-wrap' },
-      value.length
-        ? e('div', { className: 'fg-offer-list' },
-            value.map((it, i) => e('div', { className: 'fg-offer-row', key: i },
-              e('span', { className: 'fg-offer-txt' }, it.text),
-              e('button', { type: 'button', className: 'fg-offer-del', title: 'Quitar', onClick: () => removeAt(i) }, e(I.Close, { width: 12, height: 12 })))))
-        : null,
       adding
         ? e('div', { className: 'offer-editor' },
             e('input', {
@@ -532,11 +577,17 @@ import './Clientes.css';
             ),
           )
         : e('button', { type: 'button', className: 'offer-add-trigger', onClick: () => setAdding(true) }, e(I.Plus, { width: 14, height: 14 }), 'Agregar propiedad ofrecida'),
+      value.length
+        ? e('div', { className: 'fg-offer-list' },
+            value.map((it, i) => e('div', { className: 'fg-offer-row', key: i },
+              e('span', { className: 'fg-offer-txt' }, it.text),
+              e('button', { type: 'button', className: 'fg-offer-del', title: 'Quitar', onClick: () => removeAt(i) }, e(I.Close, { width: 12, height: 12 })))))
+        : null,
     );
   }
 
   // ---------- Formulario de alta ----------
-  function ClientForm({ onClose, onSave }) {
+  function ClientForm({ onClose, onSave, existingItems }) {
     const [f, setF] = useState({
       agentId: C.AGENTS[0].id,
       fecha: C.ymd(C.TODAY),
@@ -544,6 +595,7 @@ import './Clientes.css';
       telefono: '',
       email: '',
       busca: '',
+      linkCliente: '',
       presupuesto: '',
       ofreci: [],
     });
@@ -551,6 +603,8 @@ import './Clientes.css';
 
     function save() {
       if (!f.cliente.trim()) return;
+      const dup = findDuplicateClient(existingItems, { name: f.cliente, phone: f.telefono });
+      if (dup && !window.confirm(`Ya hay un cliente cargado con ese apellido o teléfono ("${dup.cliente || 'sin nombre'}"). ¿Agregar igual?`)) return;
       onSave({
         agentId: f.agentId,
         agentName: C.agentById(f.agentId)?.name || '',
@@ -559,6 +613,7 @@ import './Clientes.css';
         telefono: f.telefono.trim(),
         email: f.email.trim(),
         busca: f.busca.trim(),
+        linkCliente: f.linkCliente.trim(),
         presupuesto: f.presupuesto.trim(),
         ofreci: f.ofreci,
       });
@@ -588,6 +643,8 @@ import './Clientes.css';
           ),
           e('div', { className: 'fg' }, e('label', null, '¿Qué busca?'),
             e('textarea', { value: f.busca, rows: 2, placeholder: 'Ej. depto 2 amb en el centro, hasta USD 80.000', onChange: set('busca') })),
+          e('div', { className: 'fg' }, e('label', null, 'Link que nos mandó'),
+            e('input', { value: f.linkCliente, placeholder: 'Link de una propiedad que le interesó', onChange: set('linkCliente') })),
           e('div', { className: 'fg' }, e('label', null, 'Presupuesto'),
             e('input', { value: f.presupuesto, placeholder: 'Ej. USD 120.000', onChange: set('presupuesto') })),
           e('div', { className: 'fg' }, e('label', null, '¿Qué le ofrecí?'),

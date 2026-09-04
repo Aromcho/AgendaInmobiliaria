@@ -142,6 +142,16 @@
   color:var(--ink-3);transition:.12s;}
 .cd-list-del:hover{background:#fcefee;color:#c0392f;}
 
+.cd-list-comment{cursor:pointer;font-size:12px;color:var(--ink-2);line-height:1.4;font-style:italic;}
+.cd-list-comment.empty{color:var(--ink-3);}
+.cd-list-comment-input,.cd-chip .cd-list-comment-input{border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  font-family:inherit;font-size:12.5px;font-weight:500;color:var(--ink);background:#fff;outline:none;transition:.14s;width:100%;}
+.cd-list-comment-input:focus{border-color:var(--green-500);box-shadow:0 0 0 3px var(--mint-100);}
+.cd-list-visited{align-self:flex-start;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;
+  border:1.5px solid var(--line-2);color:var(--ink-3);font-size:11.5px;font-weight:700;transition:.12s;}
+.cd-list-visited:hover{border-color:var(--mint-400);}
+.cd-list-visited.on{border-color:var(--green-500);color:var(--green-700);background:var(--mint-50);}
+
 /* ---------- Editor para agregar una propiedad ofrecida (modal + alta) ---------- */
 .offer-editor{display:flex;flex-direction:column;gap:8px;background:var(--mint-50);border:1px solid var(--mint-100);
   border-radius:12px;padding:12px;margin-top:2px;}

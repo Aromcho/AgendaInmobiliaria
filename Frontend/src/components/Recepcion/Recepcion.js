@@ -18,6 +18,23 @@ import './Recepcion.css';
   // Un paso "cuenta" como completo si está hecho o no aplica a esta propiedad
   function stepIsResolved(state) { return state === "done" || state === "na"; }
 
+  // Detección de duplicados al cargar una propiedad nueva: mismo teléfono o mismo apellido
+  // (última palabra del nombre) del propietario que uno ya existente
+  function normalizePhone(p) { return String(p || "").replace(/\D/g, ""); }
+  function lastNameOf(fullName) {
+    const parts = String(fullName || "").trim().split(/\s+/);
+    return parts.length ? parts[parts.length - 1].toLowerCase() : "";
+  }
+  function findDuplicateOwner(items, { name, phone }) {
+    const ln = lastNameOf(name);
+    const ph = normalizePhone(phone);
+    return (items || []).find((it) => {
+      const itPhone = normalizePhone(it.phone);
+      const itLn = lastNameOf(it.owner);
+      return (ph && itPhone && ph === itPhone) || (ln && itLn && ln === itLn);
+    });
+  }
+
   // Oscurece un color hex un % dado, para el degradé del header (mismo lenguaje que el detalle de evento)
   function darken(hex, amt) {
     const clean = String(hex || "").replace("#", "");
@@ -300,7 +317,7 @@ import './Recepcion.css';
   }
 
   // ---------- Formulario de alta de propiedad (la edición es inline en RecepDetail) ----------
-  function RecepForm({ nextNum, onClose, onSave }) {
+  function RecepForm({ nextNum, onClose, onSave, existingItems }) {
     const [f, setF] = useState(() => ({
       propiedad: "", owner: "", phone: "", fecha: "", valor: "", link: "",
       superficie: "", idPublicacion: "", notas: "", responsable: "", status: "celeste",
@@ -329,6 +346,8 @@ import './Recepcion.css';
 
     function save() {
       if (!f.propiedad.trim()) return;
+      const dup = findDuplicateOwner(existingItems, { name: f.owner, phone: f.phone });
+      if (dup && !window.confirm(`Ya hay una propiedad cargada con ese apellido o teléfono de propietario ("${dup.owner || "sin nombre"}"). ¿Agregar igual?`)) return;
       const team = R.TEAM.find((t) => t.name === f.responsable);
       const stepTexts = {}; const stepStates = {};
       R.STEPS.forEach((s) => { stepTexts[s.key] = f.steps[s.key].text.trim(); stepStates[s.key] = f.steps[s.key].state; });
