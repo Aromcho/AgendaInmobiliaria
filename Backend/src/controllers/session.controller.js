@@ -74,7 +74,8 @@ export async function logout(req, res) {
 
 export async function register(req, res, next) {
   try {
-    const { email, password, name, role = 'USER', phoneNumber, photo } = req.body;
+    const { email, password, name, phoneNumber, photo } = req.body;
+    const role = ['USER', 'ADMIN', 'SUPER_ADMIN'].includes(req.body.role) ? req.body.role : 'USER';
     if (!email || !password || !name) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
