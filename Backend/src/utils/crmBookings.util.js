@@ -35,10 +35,16 @@ export async function getCrmBookingEvents() {
   const byEmail = new Map(agendaUsers.map((u) => [norm(u.email), String(u._id)]));
   const byName = new Map(agendaUsers.map((u) => [norm(u.name), String(u._id)]));
   const crmById = new Map(crmUsers.map((u) => [String(u._id), u]));
+  // Último recurso: el primer nombre, si en la Agenda hay una sola persona con ese nombre
+  // («Fabiana» en el CRM ↔ «Fabiana Alquiler» en la Agenda)
+  const first = (s) => norm(s).split(/\s+/)[0];
+  const firstCount = agendaUsers.reduce((m, u) => m.set(first(u.name), (m.get(first(u.name)) || 0) + 1), new Map());
+  const byFirst = new Map(agendaUsers.filter((u) => firstCount.get(first(u.name)) === 1).map((u) => [first(u.name), String(u._id)]));
+  const match = (email, name) => byEmail.get(norm(email)) || byName.get(norm(name)) || byFirst.get(first(name));
   const fallback = String((agendaUsers.find((u) => /SUPER_ADMIN/.test(u.role)) || agendaUsers.find((u) => /ADMIN/.test(u.role)) || agendaUsers[0] || {})._id || '') || null;
   const agentFor = (b) => {
     const cu = b.createdById ? crmById.get(String(b.createdById)) : null;
-    return (cu && (byEmail.get(norm(cu.email)) || byName.get(norm(cu.name)))) || byName.get(norm(b.createdByName)) || fallback;
+    return (cu && match(cu.email, cu.name)) || (b.createdByName && match('', b.createdByName)) || fallback;
   };
 
   const since = day(Date.now() - PAST_DAYS * 86400000);
