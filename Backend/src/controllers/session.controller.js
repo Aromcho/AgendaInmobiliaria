@@ -32,13 +32,13 @@ export async function login(req, res, next) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '24h' });
+    const token = jwt.sign(tokenPayload(user), process.env.SECRET_JWT, { expiresIn: '30d' });
     const secure = isHttps(req);
     res.cookie('jwt', token, {
       httpOnly: true,
       sameSite: secure ? 'none' : 'lax',
       secure,
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
 
     return res.json({ online: true, token, user: tokenPayload(user) });
