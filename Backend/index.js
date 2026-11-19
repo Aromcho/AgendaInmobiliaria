@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import connectDB from './src/utils/db.js';
 import router from './src/routes/index.router.js';
+import internalRouter from './src/routes/internal.router.js';
 import errorHandler from './src/middelwares/errorHandler.mid.js';
 import Task from './src/models/Task.model.js';
 import { sendUpcomingEventReminders } from './src/utils/eventReminder.util.js';
@@ -32,6 +33,8 @@ app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'agenda-inmobiliaria-backend' });
 });
 
+// Panel central: solo responde a admin-api, desde el mismo servidor y con token (ver internalAuth.mid.js)
+app.use('/internal', internalRouter);
 app.use('/api', router);
 app.use(errorHandler);
 
